@@ -20,6 +20,8 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ManajemenUser from "./pages/ManajemenUser";
 import ManajemenLokasi from "./pages/ManajemenLokasi";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { PublicRoute } from "./components/auth/PublicRoute";
 
 export default function App() {
     return (
@@ -27,8 +29,13 @@ export default function App() {
             <Router>
                 <ScrollToTop />
                 <Routes>
-                    {/* Dashboard Layout */}
-                    <Route element={<AppLayout />}>
+                    {/* Dashboard Layout - Protected */}
+                    <Route
+                        element={
+                            <ProtectedRoute>
+                                <AppLayout />
+                            </ProtectedRoute>
+                        }>
                         <Route index path="/" element={<Home />} />
 
                         {/* Others Page */}
@@ -66,9 +73,23 @@ export default function App() {
                         <Route path="/bar-chart" element={<BarChart />} />
                     </Route>
 
-                    {/* Auth Layout */}
-                    <Route path="/signin" element={<SignIn />} />
-                    <Route path="/signup" element={<SignUp />} />
+                    {/* Auth Layout - Public Only */}
+                    <Route
+                        path="/signin"
+                        element={
+                            <PublicRoute>
+                                <SignIn />
+                            </PublicRoute>
+                        }
+                    />
+                    <Route
+                        path="/signup"
+                        element={
+                            <PublicRoute>
+                                <SignUp />
+                            </PublicRoute>
+                        }
+                    />
 
                     {/* Fallback Route */}
                     <Route path="*" element={<NotFound />} />
