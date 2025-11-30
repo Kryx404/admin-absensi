@@ -184,3 +184,34 @@ export async function getStatusDistribution(params: {
         throw error;
     }
 }
+
+// GET realtime attendance status
+export async function getRealtimeStatus(params: {
+    search?: string;
+    divisi?: string;
+    departemen?: string;
+    position?: string;
+    sortBy?: string;
+    sortOrder?: "ASC" | "DESC";
+}) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+        }
+    });
+
+    const url = `${API_BASE}/realtime?${queryParams.toString()}`;
+    console.log("[Absensi API] Fetching realtime status:", url);
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal mengambil status realtime");
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("[Absensi API] Realtime error:", error);
+        throw error;
+    }
+}
