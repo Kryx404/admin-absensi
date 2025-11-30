@@ -19,6 +19,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ManajemenUser from "./pages/ManajemenUser";
+import ManajemenLokasi from "./pages/ManajemenLokasi";
 
 export default function App() {
     return (
@@ -37,6 +38,10 @@ export default function App() {
                         <Route
                             path="/manajemen-user"
                             element={<ManajemenUser />}
+                        />
+                        <Route
+                            path="/manajemen-lokasi"
+                            element={<ManajemenLokasi />}
                         />
 
                         {/* Forms */}

@@ -53,7 +53,7 @@ const navItems: NavItem[] = [
     {
         icon: <BoxCubeIcon />,
         name: "Pengaturan Kantor",
-        subItems: [{ name: "Tambah/Edit Lokasi", path: "/pengaturan-lokasi" }],
+        subItems: [{ name: "Tambah/Edit Lokasi", path: "/manajemen-lokasi" }],
     },
     {
         icon: <CalenderIcon />,
