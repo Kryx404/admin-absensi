@@ -20,6 +20,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ManajemenUser from "./pages/ManajemenUser";
 import ManajemenLokasi from "./pages/ManajemenLokasi";
+import RekapAbsensi from "./pages/RekapAbsensi";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 
@@ -49,6 +50,10 @@ export default function App() {
                         <Route
                             path="/manajemen-lokasi"
                             element={<ManajemenLokasi />}
+                        />
+                        <Route
+                            path="/laporan-rekap"
+                            element={<RekapAbsensi />}
                         />
 
                         {/* Forms */}

@@ -54,3 +54,70 @@ export async function clockOut(formData: FormData) {
     if (!res.ok) throw new Error("Gagal clock-out");
     return res.json();
 }
+
+// GET rekap absensi dengan filter
+export async function getRekapAbsensi(params: {
+    startDate?: string;
+    endDate?: string;
+    month?: number;
+    year?: number;
+    search?: string;
+    divisi?: string;
+    departemen?: string;
+    sortBy?: string;
+    sortOrder?: "ASC" | "DESC";
+    page?: number;
+    limit?: number;
+}) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+        }
+    });
+
+    const url = `${API_BASE}/absensi/rekap?${queryParams.toString()}`;
+    console.log("[Absensi API] Fetching rekap:", url);
+
+    try {
+        const res = await fetch(url);
+        console.log("[Absensi API] Rekap response status:", res.status);
+        if (!res.ok) throw new Error("Gagal mengambil rekap absensi");
+        const data = await res.json();
+        console.log("[Absensi API] Rekap data received:", data);
+        return data;
+    } catch (error) {
+        console.error("[Absensi API] Rekap error:", error);
+        throw error;
+    }
+}
+
+// GET summary statistik rekap
+export async function getRekapSummary(params: {
+    startDate?: string;
+    endDate?: string;
+    month?: number;
+    year?: number;
+}) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+        }
+    });
+
+    const url = `${API_BASE}/absensi/rekap/summary?${queryParams.toString()}`;
+    console.log("[Absensi API] Fetching summary:", url);
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal mengambil summary rekap");
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("[Absensi API] Summary error:", error);
+        throw error;
+    }
+}
