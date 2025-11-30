@@ -5,6 +5,30 @@ import {
     updateLokasi,
     deleteLokasi,
 } from "../api/lokasi";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import {
+    FaMapMarkerAlt,
+    FaMap,
+    FaEdit,
+    FaTrash,
+    FaCheckCircle,
+    FaTimesCircle,
+} from "react-icons/fa";
+
+// Fix default marker icon issue in Leaflet
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+const DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface Lokasi {
     id: number;
@@ -25,6 +49,46 @@ const ManajemenLokasi: React.FC = () => {
         is_active: true,
     });
     const [editId, setEditId] = useState<number | null>(null);
+    const [showMap, setShowMap] = useState(false);
+
+    // Component untuk handle klik di map
+    function LocationMarker() {
+        useMapEvents({
+            async click(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                setForm({
+                    ...form,
+                    latitude: lat,
+                    longitude: lng,
+                });
+
+                // Reverse geocoding untuk mendapatkan alamat
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                    );
+                    const data = await response.json();
+
+                    if (data.display_name) {
+                        setForm((prev) => ({
+                            ...prev,
+                            latitude: lat,
+                            longitude: lng,
+                            alamat: data.display_name,
+                        }));
+                    }
+                } catch (error) {
+                    console.error("Error getting address:", error);
+                }
+            },
+        });
+
+        return form.latitude && form.longitude ? (
+            <Marker position={[form.latitude, form.longitude]} />
+        ) : null;
+    }
 
     const fetchLokasi = async () => {
         setLoading(true);
@@ -78,21 +142,28 @@ const ManajemenLokasi: React.FC = () => {
             const payload = {
                 namaKantor: form.nama_kantor,
                 alamat: form.alamat,
-                latitude: form.latitude,
-                longitude: form.longitude,
-                radius: form.radius || 100,
+                latitude: Number(form.latitude),
+                longitude: Number(form.longitude),
+                radius: Number(form.radius) || 100,
                 is_active: form.is_active ?? true,
             };
 
+            console.log("Submit payload:", payload);
+            console.log("Edit ID:", editId);
+
             if (editId) {
-                await updateLokasi(editId.toString(), payload);
+                const result = await updateLokasi(editId.toString(), payload);
+                console.log("Update result:", result);
             } else {
-                await createLokasi(payload);
+                const result = await createLokasi(payload);
+                console.log("Create result:", result);
             }
             setForm({ radius: 100, is_active: true });
             setEditId(null);
+            setShowMap(false);
             fetchLokasi();
         } catch (e: any) {
+            console.error("Submit error:", e);
             setError(e.message || "Gagal simpan lokasi");
         }
     };
@@ -100,6 +171,16 @@ const ManajemenLokasi: React.FC = () => {
     const handleEdit = (lok: Lokasi) => {
         setForm(lok);
         setEditId(lok.id);
+        setShowMap(false); // Reset map state saat edit
+        // Scroll ke form
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handleCancelEdit = () => {
+        setForm({ radius: 100, is_active: true });
+        setEditId(null);
+        setShowMap(false);
+        setError("");
     };
 
     const handleDelete = async (id: number) => {
@@ -115,12 +196,34 @@ const ManajemenLokasi: React.FC = () => {
     const getLocationFromMap = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
                     setForm({
                         ...form,
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
+                        latitude: lat,
+                        longitude: lng,
                     });
+
+                    // Reverse geocoding untuk mendapatkan alamat
+                    try {
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                        );
+                        const data = await response.json();
+
+                        if (data.display_name) {
+                            setForm((prev) => ({
+                                ...prev,
+                                latitude: lat,
+                                longitude: lng,
+                                alamat: data.display_name,
+                            }));
+                        }
+                    } catch (error) {
+                        console.error("Error getting address:", error);
+                    }
                 },
                 (error) => {
                     alert("Gagal mendapatkan lokasi: " + error.message);
@@ -134,9 +237,24 @@ const ManajemenLokasi: React.FC = () => {
     return (
         <div className="p-6">
             <h2 className="text-xl font-bold mb-4">Manajemen Lokasi Kantor</h2>
+
+            {editId && (
+                <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">
+                            ✏️ Mode Edit - Mengubah data lokasi
+                        </span>
+                    </div>
+                </div>
+            )}
+
             <form
                 onSubmit={handleSubmit}
-                className="mb-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                className={`mb-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md ${
+                    editId
+                        ? "border-2 border-blue-400 dark:border-blue-600"
+                        : ""
+                }`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">
@@ -213,14 +331,54 @@ const ManajemenLokasi: React.FC = () => {
                             Jarak maksimal absensi dari titik kantor
                         </small>
                     </div>
-                    <div className="flex items-center pt-6">
+                    <div className="flex items-center pt-6 gap-2">
                         <button
                             type="button"
                             onClick={getLocationFromMap}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
-                            📍 Gunakan Lokasi Saat Ini
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2">
+                            <FaMapMarkerAlt /> Gunakan Lokasi Saat Ini
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowMap(!showMap)}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2">
+                            <FaMap /> {showMap ? "Tutup Map" : "Pilih di Map"}
                         </button>
                     </div>
+
+                    {/* Map Picker */}
+                    {showMap && (
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium mb-2">
+                                Klik pada map untuk memilih lokasi
+                            </label>
+                            <div
+                                className="border rounded-lg overflow-hidden"
+                                style={{ height: "400px" }}>
+                                <MapContainer
+                                    center={[
+                                        form.latitude || -7.395769,
+                                        form.longitude || 112.779663,
+                                    ]}
+                                    zoom={15}
+                                    style={{ height: "100%", width: "100%" }}>
+                                    <TileLayer
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                    />
+                                    <LocationMarker />
+                                </MapContainer>
+                            </div>
+                            {form.latitude && form.longitude && (
+                                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                    Koordinat terpilih:{" "}
+                                    {form.latitude.toFixed(6)},{" "}
+                                    {form.longitude.toFixed(6)}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="md:col-span-2 flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -243,11 +401,8 @@ const ManajemenLokasi: React.FC = () => {
                     {editId && (
                         <button
                             type="button"
-                            onClick={() => {
-                                setForm({ radius: 100, is_active: true });
-                                setEditId(null);
-                            }}
-                            className="px-6 py-2 rounded border hover:bg-gray-100 dark:hover:bg-gray-700">
+                            onClick={handleCancelEdit}
+                            className="px-6 py-2 rounded border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">
                             Batal
                         </button>
                     )}
@@ -310,14 +465,21 @@ const ManajemenLokasi: React.FC = () => {
                                         </td>
                                         <td className="border p-3 text-center">
                                             <span
-                                                className={`px-2 py-1 rounded text-xs ${
+                                                className={`px-2 py-1 rounded text-xs flex items-center gap-1 justify-center ${
                                                     lok.is_active
                                                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                                         : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                                 }`}>
-                                                {lok.is_active
-                                                    ? "Aktif"
-                                                    : "Nonaktif"}
+                                                {lok.is_active ? (
+                                                    <>
+                                                        <FaCheckCircle /> Aktif
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FaTimesCircle />{" "}
+                                                        Nonaktif
+                                                    </>
+                                                )}
                                             </span>
                                         </td>
                                         <td className="border p-3">
@@ -326,15 +488,15 @@ const ManajemenLokasi: React.FC = () => {
                                                     onClick={() =>
                                                         handleEdit(lok)
                                                     }
-                                                    className="text-blue-600 hover:text-blue-800 font-medium">
-                                                    Edit
+                                                    className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                                                    <FaEdit /> Edit
                                                 </button>
                                                 <button
                                                     onClick={() =>
                                                         handleDelete(lok.id)
                                                     }
-                                                    className="text-red-600 hover:text-red-800 font-medium">
-                                                    Hapus
+                                                    className="text-red-600 hover:text-red-800 font-medium flex items-center gap-1">
+                                                    <FaTrash /> Hapus
                                                 </button>
                                             </div>
                                         </td>
