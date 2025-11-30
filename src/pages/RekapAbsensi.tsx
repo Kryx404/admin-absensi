@@ -12,14 +12,14 @@ import {
 } from "react-icons/fa";
 
 type AbsensiRecord = {
-    id: number;
-    tanggal: string;
-    clock_in_time: string;
-    clock_in_latitude: number;
-    clock_in_longitude: number;
-    clock_in_address: string;
-    clock_in_distance: number;
-    clock_in_photo: string;
+    id: number | null;
+    tanggal: string | null;
+    clock_in_time: string | null;
+    clock_in_latitude: number | null;
+    clock_in_longitude: number | null;
+    clock_in_address: string | null;
+    clock_in_distance: number | null;
+    clock_in_photo: string | null;
     clock_out_time: string | null;
     clock_out_latitude: number | null;
     clock_out_longitude: number | null;
@@ -27,17 +27,18 @@ type AbsensiRecord = {
     clock_out_distance: number | null;
     clock_out_photo: string | null;
     durasi_kerja: string | null;
-    status: string;
+    status: string | null;
     keterangan: string | null;
+    current_status: string;
     user_id: number;
     nik: string;
     user_name: string;
     position: string;
     email: string;
-    phone: string;
-    lokasi_id: number;
-    nama_kantor: string;
-    alamat_kantor: string;
+    phone: string | null;
+    lokasi_id: number | null;
+    nama_kantor: string | null;
+    alamat_kantor: string | null;
 };
 
 type Pagination = {
@@ -64,6 +65,7 @@ const RekapAbsensi = () => {
     const [search, setSearch] = useState("");
     const [divisi, setDivisi] = useState("");
     const [departemen, setDepartemen] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
     const [sortBy, setSortBy] = useState("tanggal");
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
 
@@ -83,6 +85,7 @@ const RekapAbsensi = () => {
                     search?: string;
                     divisi?: string;
                     departemen?: string;
+                    status?: string;
                 } = {
                     page,
                     limit: 25,
@@ -98,6 +101,7 @@ const RekapAbsensi = () => {
                 if (search) params.search = search;
                 if (divisi) params.divisi = divisi;
                 if (departemen) params.departemen = departemen;
+                if (statusFilter) params.status = statusFilter;
 
                 const response = await getRekapAbsensi(params);
 
@@ -114,7 +118,16 @@ const RekapAbsensi = () => {
                 setLoading(false);
             }
         },
-        [sortBy, sortOrder, startDate, endDate, search, divisi, departemen],
+        [
+            sortBy,
+            sortOrder,
+            startDate,
+            endDate,
+            search,
+            divisi,
+            departemen,
+            statusFilter,
+        ],
     );
 
     useEffect(() => {
@@ -131,6 +144,7 @@ const RekapAbsensi = () => {
         setSearch("");
         setDivisi("");
         setDepartemen("");
+        setStatusFilter("");
         setSortBy("tanggal");
         setSortOrder("DESC");
         setTimeout(() => fetchData(1), 100);
@@ -145,7 +159,7 @@ const RekapAbsensi = () => {
         }
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string | null) => {
         const statusMap: Record<string, { label: string; className: string }> =
             {
                 hadir: {
@@ -168,13 +182,15 @@ const RekapAbsensi = () => {
                     className:
                         "bg-red-100 dark:bg-red-800/40 text-red-700 dark:text-red-200 border-red-200 dark:border-red-600",
                 },
+                belum_absen: {
+                    label: "Belum Absen",
+                    className:
+                        "bg-gray-100 dark:bg-gray-800/40 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600",
+                },
             };
 
-        const statusInfo = statusMap[status] || {
-            label: status,
-            className:
-                "bg-gray-100 dark:bg-gray-800/40 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600",
-        };
+        const statusInfo =
+            statusMap[status || "belum_absen"] || statusMap["belum_absen"];
 
         return (
             <span
@@ -193,7 +209,8 @@ const RekapAbsensi = () => {
         });
     };
 
-    const formatDate = (date: string) => {
+    const formatDate = (date: string | null) => {
+        if (!date) return "-";
         return new Date(date).toLocaleDateString("id-ID", {
             day: "2-digit",
             month: "long",
@@ -302,6 +319,32 @@ const RekapAbsensi = () => {
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                                     disabled>
                                     <option value="">Semua Departemen</option>
+                                </select>
+                            </div>
+
+                            {/* Status Filter */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Status Kehadiran
+                                </label>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) =>
+                                        setStatusFilter(e.target.value)
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100">
+                                    <option value="">Semua Status</option>
+                                    <option value="hadir">Hadir</option>
+                                    <option value="terlambat">Terlambat</option>
+                                    <option value="pulang_cepat">
+                                        Pulang Cepat
+                                    </option>
+                                    <option value="tidak_hadir">
+                                        Tidak Hadir
+                                    </option>
+                                    <option value="belum_absen">
+                                        Belum Absen
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -432,7 +475,10 @@ const RekapAbsensi = () => {
                                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                             {data.map((record, index) => (
                                                 <tr
-                                                    key={record.id}
+                                                    key={
+                                                        record.id ||
+                                                        `user-${record.user_id}`
+                                                    }
                                                     className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                                                     <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
                                                         {(pagination.page - 1) *
@@ -528,7 +574,7 @@ const RekapAbsensi = () => {
                                                     </td>
                                                     <td className="px-4 py-4">
                                                         {getStatusBadge(
-                                                            record.status,
+                                                            record.current_status,
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
