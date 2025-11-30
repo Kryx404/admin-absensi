@@ -36,13 +36,34 @@ export async function createUser(data: any) {
 }
 
 export async function updateUser(id: string, data: any) {
-    const res = await fetch(`${API_BASE}/users/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Gagal update user");
-    return res.json();
+    const url = `${API_BASE}/users/${id}`;
+    console.log("[User API] Updating user:", url, data);
+    try {
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+        console.log("[User API] Update response status:", res.status);
+
+        const result = await res.json();
+        console.log("[User API] Update response data:", result);
+
+        if (!res.ok) {
+            return {
+                success: false,
+                message: result.message || "Gagal update user",
+            };
+        }
+
+        return result;
+    } catch (error) {
+        console.error("[User API] Update error:", error);
+        return {
+            success: false,
+            message: "Terjadi kesalahan saat update user",
+        };
+    }
 }
 
 export async function deleteUser(id: string) {
