@@ -121,3 +121,66 @@ export async function getRekapSummary(params: {
         throw error;
     }
 }
+
+// GET statistik absensi untuk grafik
+export async function getStatistikAbsensi(params: {
+    startDate?: string;
+    endDate?: string;
+    month?: number;
+    year?: number;
+    divisi?: string;
+    departemen?: string;
+    groupBy?: "day" | "month" | "employee";
+}) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+        }
+    });
+
+    const url = `${API_BASE}/statistik?${queryParams.toString()}`;
+    console.log("[Absensi API] Fetching statistik:", url);
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal mengambil statistik absensi");
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("[Absensi API] Statistik error:", error);
+        throw error;
+    }
+}
+
+// GET status distribution untuk pie chart
+export async function getStatusDistribution(params: {
+    startDate?: string;
+    endDate?: string;
+    month?: number;
+    year?: number;
+    divisi?: string;
+    departemen?: string;
+}) {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+        }
+    });
+
+    const url = `${API_BASE}/statistik/distribution?${queryParams.toString()}`;
+    console.log("[Absensi API] Fetching distribution:", url);
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal mengambil distribusi status");
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("[Absensi API] Distribution error:", error);
+        throw error;
+    }
+}

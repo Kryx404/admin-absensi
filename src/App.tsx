@@ -21,6 +21,7 @@ import Home from "./pages/Dashboard/Home";
 import ManajemenUser from "./pages/ManajemenUser";
 import ManajemenLokasi from "./pages/ManajemenLokasi";
 import RekapAbsensi from "./pages/RekapAbsensi";
+import GrafikStatistik from "./pages/GrafikStatistik";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 
@@ -54,6 +55,10 @@ export default function App() {
                         <Route
                             path="/laporan-rekap"
                             element={<RekapAbsensi />}
+                        />
+                        <Route
+                            path="/laporan-statistik"
+                            element={<GrafikStatistik />}
                         />
 
                         {/* Forms */}
