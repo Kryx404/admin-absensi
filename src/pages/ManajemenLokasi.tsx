@@ -55,8 +55,8 @@ const ManajemenLokasi: React.FC = () => {
     function LocationMarker() {
         useMapEvents({
             async click(e) {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
+                const lat = parseFloat(e.latlng.lat.toFixed(6));
+                const lng = parseFloat(e.latlng.lng.toFixed(6));
 
                 setForm({
                     ...form,
@@ -169,7 +169,11 @@ const ManajemenLokasi: React.FC = () => {
     };
 
     const handleEdit = (lok: Lokasi) => {
-        setForm(lok);
+        setForm({
+            ...lok,
+            latitude: parseFloat(lok.latitude.toString()),
+            longitude: parseFloat(lok.longitude.toString()),
+        });
         setEditId(lok.id);
         setShowMap(false); // Reset map state saat edit
         // Scroll ke form
@@ -197,8 +201,10 @@ const ManajemenLokasi: React.FC = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
+                    const lat = parseFloat(position.coords.latitude.toFixed(6));
+                    const lng = parseFloat(
+                        position.coords.longitude.toFixed(6),
+                    );
 
                     setForm({
                         ...form,
