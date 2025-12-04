@@ -23,6 +23,7 @@ import ManajemenLokasi from "./pages/ManajemenLokasi";
 import RekapAbsensi from "./pages/RekapAbsensi";
 import GrafikStatistik from "./pages/GrafikStatistik";
 import StatusRealtime from "./pages/StatusRealtime";
+import ExportData from "./pages/ExportData";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 
@@ -64,6 +65,10 @@ export default function App() {
                         <Route
                             path="/laporan-realtime"
                             element={<StatusRealtime />}
+                        />
+                        <Route
+                            path="/export-laporan"
+                            element={<ExportData />}
                         />
 
                         {/* Forms */}
