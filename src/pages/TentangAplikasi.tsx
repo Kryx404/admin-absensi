@@ -30,7 +30,7 @@ const TentangAplikasi = () => {
                                 <span className="text-gray-400">
                                     Developer:
                                 </span>
-                                <span>Your Company Name</span>
+                                <span>Kryx404</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-400">Lisensi:</span>
@@ -97,15 +97,15 @@ const TentangAplikasi = () => {
                             Hubungi Kami
                         </h3>
                         <div className="space-y-2 text-gray-300">
-                            <p>📧 Email: support@yourdomain.com</p>
-                            <p>📱 WhatsApp: +62 XXX XXXX XXXX</p>
-                            <p>🌐 Website: www.yourdomain.com</p>
+                            <p>📧 Email: anaknegri2025@gmail.com</p>
+                            <p>📱 WhatsApp: +62 813 3001 436</p>
+                            {/* <p>🌐 Website: www.yourdomain.com</p> */}
                         </div>
                     </div>
 
                     {/* Copyright */}
                     <div className="text-center text-gray-400 text-sm">
-                        <p>© 2024 Your Company Name. All rights reserved.</p>
+                        <p>© 2024 Kryx404. All rights reserved.</p>
                     </div>
                 </div>
             </div>
