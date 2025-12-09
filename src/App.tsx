@@ -20,10 +20,18 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ManajemenUser from "./pages/ManajemenUser";
 import ManajemenLokasi from "./pages/ManajemenLokasi";
+import ManajemenCabang from "./pages/ManajemenCabang";
 import RekapAbsensi from "./pages/RekapAbsensi";
 import GrafikStatistik from "./pages/GrafikStatistik";
 import StatusRealtime from "./pages/StatusRealtime";
 import ExportData from "./pages/ExportData";
+import MonitoringPembayaran from "./pages/MonitoringPembayaran";
+import PengaturanSistem from "./pages/PengaturanSistem";
+import LogAktivitas from "./pages/LogAktivitas";
+import Notifikasi from "./pages/Notifikasi";
+import BackupData from "./pages/BackupData";
+import Bantuan from "./pages/Bantuan";
+import TentangAplikasi from "./pages/TentangAplikasi";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 
@@ -55,6 +63,10 @@ export default function App() {
                             element={<ManajemenLokasi />}
                         />
                         <Route
+                            path="/manajemen-cabang"
+                            element={<ManajemenCabang />}
+                        />
+                        <Route
                             path="/laporan-rekap"
                             element={<RekapAbsensi />}
                         />
@@ -70,6 +82,22 @@ export default function App() {
                             path="/export-laporan"
                             element={<ExportData />}
                         />
+                        <Route
+                            path="/monitoring-pembayaran"
+                            element={<MonitoringPembayaran />}
+                        />
+                        <Route
+                            path="/pengaturan-sistem"
+                            element={<PengaturanSistem />}
+                        />
+                        <Route
+                            path="/log-aktivitas"
+                            element={<LogAktivitas />}
+                        />
+                        <Route path="/notifikasi" element={<Notifikasi />} />
+                        <Route path="/backup-data" element={<BackupData />} />
+                        <Route path="/bantuan" element={<Bantuan />} />
+                        <Route path="/tentang" element={<TentangAplikasi />} />
 
                         {/* Forms */}
                         <Route
