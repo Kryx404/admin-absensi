@@ -13,6 +13,16 @@ import {
     UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import {
+    FiSettings,
+    FiFileText,
+    FiBell,
+    FiHardDrive,
+    FiHelpCircle,
+    FiInfo,
+    FiDollarSign,
+    FiCheckSquare,
+} from "react-icons/fi";
 
 type NavItem = {
     name: string;
@@ -69,7 +79,77 @@ const navItems: NavItem[] = [
     },
 ];
 
-const othersItems: NavItem[] = [];
+// Get user role from localStorage
+const getUserRole = () => {
+    try {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            return user.role || "admin";
+        }
+    } catch (error) {
+        console.error("Error parsing user from localStorage:", error);
+    }
+    return "admin";
+};
+
+// Others items - conditional based on role
+const getOthersItems = (): NavItem[] => {
+    const userRole = getUserRole();
+    const items: NavItem[] = [];
+
+    // Admin menu items
+    items.push(
+        {
+            icon: <FiSettings className="w-5 h-5" />,
+            name: "Pengaturan Sistem",
+            path: "/pengaturan-sistem",
+        },
+        {
+            icon: <FiFileText className="w-5 h-5" />,
+            name: "Log Aktivitas",
+            path: "/log-aktivitas",
+        },
+        {
+            icon: <FiBell className="w-5 h-5" />,
+            name: "Notifikasi",
+            path: "/notifikasi",
+        },
+        {
+            icon: <FiHardDrive className="w-5 h-5" />,
+            name: "Backup Data",
+            path: "/backup-data",
+        },
+        {
+            icon: <FiHelpCircle className="w-5 h-5" />,
+            name: "Bantuan & Panduan",
+            path: "/bantuan",
+        },
+        {
+            icon: <FiInfo className="w-5 h-5" />,
+            name: "Tentang Aplikasi",
+            path: "/tentang",
+        },
+    );
+
+    // Superadmin additional items
+    if (userRole === "superadmin") {
+        items.push(
+            {
+                icon: <BoxCubeIcon />,
+                name: "Manajemen Cabang",
+                path: "/manajemen-cabang",
+            },
+            {
+                icon: <FiDollarSign className="w-5 h-5" />,
+                name: "Monitoring Pembayaran",
+                path: "/monitoring-pembayaran",
+            },
+        );
+    }
+
+    return items;
+};
 
 const AppSidebar: React.FC = () => {
     const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
@@ -83,6 +163,14 @@ const AppSidebar: React.FC = () => {
         {},
     );
     const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [othersMenuItems, setOthersMenuItems] = useState<NavItem[]>(
+        getOthersItems(),
+    );
+
+    // Update others items when component mounts or localStorage changes
+    useEffect(() => {
+        setOthersMenuItems(getOthersItems());
+    }, [location]);
 
     // const isActive = (path: string) => location.pathname === path;
     const isActive = useCallback(
@@ -93,7 +181,7 @@ const AppSidebar: React.FC = () => {
     useEffect(() => {
         let submenuMatched = false;
         ["main", "others"].forEach((menuType) => {
-            const items = menuType === "main" ? navItems : othersItems;
+            const items = menuType === "main" ? navItems : othersMenuItems;
             items.forEach((nav, index) => {
                 if (nav.subItems) {
                     nav.subItems.forEach((subItem) => {
@@ -112,7 +200,7 @@ const AppSidebar: React.FC = () => {
         if (!submenuMatched) {
             setOpenSubmenu(null);
         }
-    }, [location, isActive]);
+    }, [location, isActive, othersMenuItems]);
 
     useEffect(() => {
         if (openSubmenu !== null) {
@@ -343,7 +431,7 @@ const AppSidebar: React.FC = () => {
                                     <HorizontaLDots />
                                 )}
                             </h2>
-                            {renderMenuItems(othersItems, "others")}
+                            {renderMenuItems(othersMenuItems, "others")}
                         </div>
                     </div>
                 </nav>
