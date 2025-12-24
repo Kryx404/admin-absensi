@@ -4,8 +4,11 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { getCurrentUser } from "../../api/auth";
-import { updateUser } from "../../api/user";
-import { useState, useEffect } from "react";
+import { updateUser, getUserById } from "../../api/user";
+import { uploadProfilePhoto, deleteProfilePhoto } from "../../api/profile";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Cropper from "react-easy-crop";
+import { Point, Area } from "react-easy-crop/types";
 
 export default function UserMetaCard() {
     const { isOpen, openModal, closeModal } = useModal();
@@ -15,24 +18,82 @@ export default function UserMetaCard() {
         email: "",
         phone: "",
         position: "",
+        address: "",
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Image crop states
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(
+        null,
+    );
+    const [isCropping, setIsCropping] = useState(false);
+
+    const API_BASE_URL =
+        import.meta.env.VITE_API_URL?.replace("/api", "") ||
+        "http://localhost:3001";
 
     useEffect(() => {
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
-        if (currentUser) {
-            setFormData({
-                name: currentUser.name || "",
-                email: currentUser.email || "",
-                phone: currentUser.phone || "",
-                position: currentUser.position || "",
-            });
-        }
+        const loadUserData = async () => {
+            const currentUser = getCurrentUser();
+            console.log("Current User Data from localStorage:", currentUser);
+
+            // Jika user ada, ambil data terbaru dari server
+            if (currentUser?.id) {
+                try {
+                    const response = await getUserById(
+                        currentUser.id.toString(),
+                    );
+                    console.log("User Data from server:", response);
+
+                    if (response.success && response.data) {
+                        const freshUser = response.data;
+                        console.log("Fresh User Address:", freshUser.address);
+
+                        // Update localStorage dengan data terbaru
+                        localStorage.setItem("user", JSON.stringify(freshUser));
+                        setUser(freshUser);
+
+                        setFormData({
+                            name: freshUser.name || "",
+                            email: freshUser.email || "",
+                            phone: freshUser.phone || "",
+                            position: freshUser.position || "",
+                            address: freshUser.address || "",
+                        });
+                        console.log("FormData after set:", {
+                            name: freshUser.name || "",
+                            email: freshUser.email || "",
+                            phone: freshUser.phone || "",
+                            position: freshUser.position || "",
+                            address: freshUser.address || "",
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error loading user data:", error);
+                    // Fallback ke data localStorage jika gagal
+                    setUser(currentUser);
+                    setFormData({
+                        name: currentUser.name || "",
+                        email: currentUser.email || "",
+                        phone: currentUser.phone || "",
+                        position: currentUser.position || "",
+                        address: currentUser.address || "",
+                    });
+                }
+            }
+        };
+
+        loadUserData();
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
@@ -49,18 +110,14 @@ export default function UserMetaCard() {
         setError("");
 
         try {
-            console.log("Updating user meta:", user.id, formData);
             const response = await updateUser(user.id.toString(), formData);
-            console.log("Update response:", response);
 
             if (response.success) {
-                // Update user di localStorage dengan data dari response
                 const updatedUser = { ...user, ...response.data };
                 localStorage.setItem("user", JSON.stringify(updatedUser));
                 setUser(updatedUser);
                 alert("Profile berhasil diupdate!");
                 closeModal();
-                // Reload page untuk update tampilan
                 window.location.reload();
             } else {
                 setError(response.message || "Gagal update profile");
@@ -72,13 +129,231 @@ export default function UserMetaCard() {
             setLoading(false);
         }
     };
+
+    const handlePhotoClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validasi file
+        if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
+            alert("Hanya file JPG dan PNG yang diperbolehkan!");
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("Ukuran file maksimal 2MB!");
+            return;
+        }
+
+        // Read file as data URL untuk preview
+        const reader = new FileReader();
+        reader.onload = () => {
+            setSelectedImage(reader.result as string);
+            setIsCropping(true);
+        };
+        reader.readAsDataURL(file);
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    const onCropComplete = useCallback(
+        (_croppedArea: Area, croppedAreaPixels: Area) => {
+            setCroppedAreaPixels(croppedAreaPixels);
+        },
+        [],
+    );
+
+    const createImage = (url: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+            const image = new Image();
+            image.addEventListener("load", () => resolve(image));
+            image.addEventListener("error", (error) => reject(error));
+            image.setAttribute("crossOrigin", "anonymous");
+            image.src = url;
+        });
+
+    const getCroppedImg = async (
+        imageSrc: string,
+        pixelCrop: Area,
+    ): Promise<Blob> => {
+        const image = await createImage(imageSrc);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+            throw new Error("No 2d context");
+        }
+
+        canvas.width = pixelCrop.width;
+        canvas.height = pixelCrop.height;
+
+        ctx.drawImage(
+            image,
+            pixelCrop.x,
+            pixelCrop.y,
+            pixelCrop.width,
+            pixelCrop.height,
+            0,
+            0,
+            pixelCrop.width,
+            pixelCrop.height,
+        );
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob as Blob);
+            }, "image/jpeg");
+        });
+    };
+
+    const handleCropSave = async () => {
+        if (!selectedImage || !croppedAreaPixels || !user?.id) return;
+
+        setLoading(true);
+        try {
+            const croppedBlob = await getCroppedImg(
+                selectedImage,
+                croppedAreaPixels,
+            );
+            const croppedFile = new File([croppedBlob], "profile.jpg", {
+                type: "image/jpeg",
+            });
+
+            console.log("Uploading photo for user:", user.id);
+            const response = await uploadProfilePhoto(user.id, croppedFile);
+            console.log("Upload response:", response);
+
+            if (response.success) {
+                console.log("Upload successful, data:", response.data);
+                console.log(
+                    "New profile_photo path:",
+                    response.data.profile_photo,
+                );
+
+                const updatedUser = {
+                    ...user,
+                    profile_photo: response.data.profile_photo,
+                };
+
+                console.log("Updated user object:", updatedUser);
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+                console.log("localStorage updated");
+
+                setUser(updatedUser);
+
+                // Dispatch custom event untuk trigger update di component lain
+                window.dispatchEvent(new Event("userUpdated"));
+
+                alert("Foto profile berhasil diupload!");
+                setIsCropping(false);
+                setSelectedImage(null);
+
+                // Force reload dengan clear cache
+                setTimeout(() => {
+                    window.location.href = window.location.href;
+                }, 500);
+            } else {
+                alert(
+                    `Gagal upload foto: ${
+                        response.message || "Terjadi kesalahan"
+                    }`,
+                );
+            }
+        } catch (err: any) {
+            console.error("Upload photo error:", err);
+            const errorMessage =
+                err.response?.data?.message ||
+                err.message ||
+                "Terjadi kesalahan saat upload foto";
+            alert(`Gagal upload foto: ${errorMessage}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCropCancel = () => {
+        setIsCropping(false);
+        setSelectedImage(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+    };
+
+    const handleDeletePhoto = async () => {
+        if (!user?.id || !user?.profile_photo) return;
+
+        if (!confirm("Hapus foto profile?")) return;
+
+        setLoading(true);
+        try {
+            const response = await deleteProfilePhoto(user.id);
+            if (response.success) {
+                const updatedUser = { ...user, profile_photo: null };
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+                setUser(updatedUser);
+
+                // Dispatch custom event untuk trigger update di component lain
+                window.dispatchEvent(new Event("userUpdated"));
+
+                alert("Foto profile berhasil dihapus!");
+
+                // Force reload dengan clear cache
+                window.location.href = window.location.href;
+            } else {
+                alert(
+                    `Gagal hapus foto: ${
+                        response.message || "Terjadi kesalahan"
+                    }`,
+                );
+            }
+        } catch (err: any) {
+            console.error("Delete photo error:", err);
+            const errorMessage =
+                err.response?.data?.message ||
+                err.message ||
+                "Terjadi kesalahan saat hapus foto";
+            alert(`Gagal hapus foto: ${errorMessage}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getProfilePhotoUrl = () => {
+        const photoPath = user?.profile_photo;
+        console.log("getProfilePhotoUrl - user:", user);
+        console.log("getProfilePhotoUrl - profile_photo:", photoPath);
+
+        if (photoPath) {
+            // Add timestamp to bust browser cache
+            const url = `${API_BASE_URL}${photoPath}?t=${Date.now()}`;
+            console.log("Generated photo URL:", url);
+            return url;
+        }
+        console.log("Using default image");
+        return "/images/user/owner.jpg";
+    };
+
     return (
         <>
             <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex flex-col items-center w-full gap-6 xl:flex-row">
                         <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
-                            <img src="/images/user/owner.jpg" alt="user" />
+                            <img
+                                src={getProfilePhotoUrl()}
+                                alt="user"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                        "/images/user/owner.jpg";
+                                }}
+                            />
                         </div>
                         <div className="order-3 xl:order-2">
                             <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
@@ -116,6 +391,8 @@ export default function UserMetaCard() {
                     </button>
                 </div>
             </div>
+
+            {/* Modal Edit Profile */}
             <Modal
                 isOpen={isOpen}
                 onClose={closeModal}
@@ -140,8 +417,54 @@ export default function UserMetaCard() {
                             e.preventDefault();
                             handleSave();
                         }}>
-                        <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
+                        <div className="custom-scrollbar h-[500px] overflow-y-auto px-2 pb-3">
                             <div>
+                                {/* Profile Photo Section */}
+                                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
+                                    Foto Profile
+                                </h5>
+                                <div className="mb-6 flex items-center gap-4">
+                                    <div className="w-24 h-24 overflow-hidden border-2 border-gray-200 rounded-full dark:border-gray-800">
+                                        <img
+                                            src={getProfilePhotoUrl()}
+                                            alt="profile"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (
+                                                    e.target as HTMLImageElement
+                                                ).src =
+                                                    "/images/user/owner.jpg";
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handlePhotoClick}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                                            Upload Foto Baru
+                                        </button>
+                                        {user?.profile_photo && (
+                                            <button
+                                                type="button"
+                                                onClick={handleDeletePhoto}
+                                                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:hover:bg-red-900/30">
+                                                Hapus Foto
+                                            </button>
+                                        )}
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            JPG atau PNG, max 2MB
+                                        </p>
+                                    </div>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/jpg,image/png"
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                    />
+                                </div>
+
                                 <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
                                     Informasi Admin
                                 </h5>
@@ -196,6 +519,17 @@ export default function UserMetaCard() {
                                             onChange={handleChange}
                                         />
                                     </div>
+
+                                    <div className="col-span-2">
+                                        <Label>Alamat</Label>
+                                        <textarea
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            rows={3}
+                                            className="w-full px-4 py-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -215,6 +549,62 @@ export default function UserMetaCard() {
                             </Button>
                         </div>
                     </form>
+                </div>
+            </Modal>
+
+            {/* Modal Crop Image */}
+            <Modal
+                isOpen={isCropping}
+                onClose={handleCropCancel}
+                className="max-w-[600px] m-4">
+                <div className="relative w-full max-w-[600px] rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+                    <h4 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+                        Sesuaikan Foto Profile
+                    </h4>
+                    <div className="relative h-[400px] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                        {selectedImage && (
+                            <Cropper
+                                image={selectedImage}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                cropShape="round"
+                                showGrid={false}
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={onCropComplete}
+                            />
+                        )}
+                    </div>
+                    <div className="mt-4 px-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Zoom
+                        </label>
+                        <input
+                            type="range"
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            value={zoom}
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 mt-6">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCropCancel}
+                            disabled={loading}>
+                            Batal
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleCropSave}
+                            disabled={loading}>
+                            {loading ? "Menyimpan..." : "Simpan Foto"}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </>
