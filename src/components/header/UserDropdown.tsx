@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useNavigate } from "react-router";
@@ -6,8 +6,48 @@ import { logout, getCurrentUser } from "../../api/auth";
 
 export default function UserDropdown() {
     const [isOpen, setIsOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState(getCurrentUser());
     const navigate = useNavigate();
-    const currentUser = getCurrentUser();
+
+    const API_BASE_URL =
+        import.meta.env.VITE_API_URL?.replace("/api", "") ||
+        "http://localhost:3001";
+
+    // Update user data when component mounts or when localStorage changes
+    useEffect(() => {
+        const updateUser = () => {
+            setCurrentUser(getCurrentUser());
+        };
+
+        // Update immediately
+        updateUser();
+
+        // Listen for storage changes (when localStorage is updated)
+        window.addEventListener("storage", updateUser);
+
+        // Listen for custom user update event
+        window.addEventListener("userUpdated", updateUser);
+
+        return () => {
+            window.removeEventListener("storage", updateUser);
+            window.removeEventListener("userUpdated", updateUser);
+        };
+    }, []);
+
+    const getProfilePhotoUrl = () => {
+        const photoPath = currentUser?.profile_photo;
+        console.log("UserDropdown - currentUser:", currentUser);
+        console.log("UserDropdown - profile_photo:", photoPath);
+
+        if (photoPath) {
+            // Add timestamp to bust browser cache
+            const url = `${API_BASE_URL}${photoPath}?t=${Date.now()}`;
+            console.log("UserDropdown - Generated photo URL:", url);
+            return url;
+        }
+        console.log("UserDropdown - Using default image");
+        return "/images/user/owner.jpg";
+    };
 
     function toggleDropdown() {
         setIsOpen(!isOpen);
@@ -29,7 +69,15 @@ export default function UserDropdown() {
                 onClick={toggleDropdown}
                 className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400">
                 <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-                    <img src="/images/user/owner.jpg" alt="User" />
+                    <img
+                        src={getProfilePhotoUrl()}
+                        alt="User"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                                "/images/user/owner.jpg";
+                        }}
+                    />
                 </span>
 
                 <span className="block mr-1 font-medium text-theme-sm">
