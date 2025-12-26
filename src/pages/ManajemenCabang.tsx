@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../components/common/PageMeta";
+import { Modal } from "../components/ui/modal";
 import {
     getAllCabang,
     createCabang,
     updateCabang,
     deleteCabang,
+    toggleStatusCabang,
+    extendSubscription,
 } from "../api/cabang";
 import {
     FaBuilding,
@@ -15,6 +18,8 @@ import {
     FaTimes,
     FaCheckCircle,
     FaTimesCircle,
+    FaCalendarPlus,
+    FaPowerOff,
 } from "react-icons/fa";
 
 interface Cabang {
@@ -39,6 +44,12 @@ export default function ManajemenCabang() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
+    const [showExtendModal, setShowExtendModal] = useState(false);
+    const [selectedCabang, setSelectedCabang] = useState<Cabang | null>(null);
+    const [extendForm, setExtendForm] = useState({
+        subscription_end: "",
+        paket: "",
+    });
     const [form, setForm] = useState({
         nama_cabang: "",
         kode_cabang: "",
@@ -127,6 +138,64 @@ export default function ManajemenCabang() {
         } catch (err: any) {
             toast.error(err.message || "Gagal menghapus cabang");
         }
+    };
+
+    const handleToggleStatus = async (cab: Cabang) => {
+        const newStatus = cab.status === "active" ? "inactive" : "active";
+        const confirmMessage =
+            newStatus === "inactive"
+                ? "Nonaktifkan cabang ini? Semua user di cabang ini tidak akan bisa login."
+                : "Aktifkan cabang ini? User di cabang ini akan bisa login kembali.";
+
+        if (!window.confirm(confirmMessage)) return;
+
+        try {
+            await toggleStatusCabang(cab.id, newStatus);
+            toast.success(
+                `Cabang berhasil ${
+                    newStatus === "active" ? "diaktifkan" : "dinonaktifkan"
+                }!`,
+            );
+            fetchCabang();
+        } catch (err: any) {
+            toast.error(err.message || "Gagal mengubah status cabang");
+        }
+    };
+
+    const handleOpenExtendModal = (cab: Cabang) => {
+        setSelectedCabang(cab);
+        setExtendForm({
+            subscription_end: cab.subscription_end
+                ? cab.subscription_end.split("T")[0]
+                : "",
+            paket: cab.paket,
+        });
+        setShowExtendModal(true);
+    };
+
+    const handleExtendSubscription = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedCabang) return;
+
+        try {
+            await extendSubscription(selectedCabang.id, {
+                subscription_end: extendForm.subscription_end,
+                paket: extendForm.paket || undefined,
+            });
+            toast.success("Subscription berhasil diperpanjang!");
+            setShowExtendModal(false);
+            setSelectedCabang(null);
+            setExtendForm({ subscription_end: "", paket: "" });
+            fetchCabang();
+        } catch (err: any) {
+            toast.error(err.message || "Gagal memperpanjang subscription");
+        }
+    };
+
+    const handleCloseExtendModal = () => {
+        setShowExtendModal(false);
+        setSelectedCabang(null);
+        setExtendForm({ subscription_end: "", paket: "" });
     };
 
     const getStatusBadge = (status: string) => {
@@ -525,8 +594,39 @@ export default function ManajemenCabang() {
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() =>
+                                                                handleOpenExtendModal(
+                                                                    cab,
+                                                                )
+                                                            }
+                                                            title="Perpanjang Subscription"
+                                                            className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors">
+                                                            <FaCalendarPlus />
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleToggleStatus(
+                                                                    cab,
+                                                                )
+                                                            }
+                                                            title={
+                                                                cab.status ===
+                                                                "active"
+                                                                    ? "Nonaktifkan Cabang"
+                                                                    : "Aktifkan Cabang"
+                                                            }
+                                                            className={`p-2 rounded-lg transition-colors ${
+                                                                cab.status ===
+                                                                "active"
+                                                                    ? "text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                                                    : "text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                                            }`}>
+                                                            <FaPowerOff />
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
                                                                 handleEdit(cab)
                                                             }
+                                                            title="Edit Cabang"
                                                             className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                                                             <FaEdit />
                                                         </button>
@@ -536,6 +636,7 @@ export default function ManajemenCabang() {
                                                                     cab.id,
                                                                 )
                                                             }
+                                                            title="Hapus Cabang"
                                                             className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                                                             <FaTrash />
                                                         </button>
@@ -548,6 +649,125 @@ export default function ManajemenCabang() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Modal Perpanjang Subscription */}
+                    <Modal
+                        isOpen={showExtendModal && selectedCabang !== null}
+                        onClose={handleCloseExtendModal}
+                        className="max-w-[500px] m-4">
+                        <div className="no-scrollbar relative w-full max-w-[500px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+                            <div className="px-2 pr-14">
+                                <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+                                    Perpanjang Subscription
+                                </h4>
+                                <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                                    Perpanjang masa aktif subscription cabang
+                                </p>
+                            </div>
+
+                            {selectedCabang && (
+                                <form
+                                    className="flex flex-col"
+                                    onSubmit={handleExtendSubscription}>
+                                    <div className="px-2 pb-3">
+                                        {/* Info Cabang */}
+                                        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                                Cabang:
+                                            </p>
+                                            <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                                {selectedCabang.nama_cabang}
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                Expired saat ini:{" "}
+                                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                                    {selectedCabang.subscription_end
+                                                        ? new Date(
+                                                              selectedCabang.subscription_end,
+                                                          ).toLocaleDateString(
+                                                              "id-ID",
+                                                          )
+                                                        : "-"}
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        {/* Form Fields */}
+                                        <div className="space-y-5">
+                                            <div>
+                                                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Tanggal Expired Baru{" "}
+                                                    <span className="text-red-500">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={
+                                                        extendForm.subscription_end
+                                                    }
+                                                    onChange={(e) =>
+                                                        setExtendForm({
+                                                            ...extendForm,
+                                                            subscription_end:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    required
+                                                    className="w-full px-4 py-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Paket (Opsional)
+                                                </label>
+                                                <select
+                                                    value={extendForm.paket}
+                                                    onChange={(e) =>
+                                                        setExtendForm({
+                                                            ...extendForm,
+                                                            paket: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                    className="w-full px-4 py-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                                                    <option value="">
+                                                        Tidak Ubah Paket
+                                                    </option>
+                                                    <option value="basic">
+                                                        Basic
+                                                    </option>
+                                                    <option value="pro">
+                                                        Pro
+                                                    </option>
+                                                    <option value="enterprise">
+                                                        Enterprise
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-3 px-2 mt-6 justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleCloseExtendModal}
+                                            className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700">
+                                            Batal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                                            <FaCalendarPlus />
+                                            Perpanjang
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </Modal>
                 </div>
             </div>
         </>
