@@ -31,10 +31,18 @@ type AbsensiRecord = {
     alamat_kantor: string | null;
 };
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const ExportData = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [dataCount, setDataCount] = useState(0);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     // Filter states
     const [startDate, setStartDate] = useState(
@@ -51,34 +59,55 @@ const ExportData = () => {
     const [statusFilter, setStatusFilter] = useState("");
 
     // Fetch data count for preview
-    const fetchDataCount = useCallback(async () => {
-        try {
-            const params: any = {
-                page: 1,
-                limit: 1,
-                startDate,
-                endDate,
-            };
+    const fetchDataCount = useCallback(
+        async (cabangId?: string) => {
+            try {
+                const params: any = {
+                    page: 1,
+                    limit: 1,
+                    startDate,
+                    endDate,
+                };
 
-            if (search) params.search = search;
-            if (divisi) params.divisi = divisi;
-            if (departemen) params.departemen = departemen;
-            if (statusFilter) params.status = statusFilter;
+                if (search) params.search = search;
+                if (divisi) params.divisi = divisi;
+                if (departemen) params.departemen = departemen;
+                if (statusFilter) params.status = statusFilter;
+                if (cabangId) params.cabang_id = parseInt(cabangId);
 
-            const response = await getRekapAbsensi(params);
-            setDataCount(response.pagination.total);
-        } catch (error) {
-            console.error("Error fetching data count:", error);
-            setDataCount(0);
-        }
-    }, [startDate, endDate, search, divisi, departemen, statusFilter]);
+                const response = await getRekapAbsensi(params);
+
+                // Check if superadmin needs to select a branch
+                if (
+                    response &&
+                    "needSelection" in response &&
+                    response.needSelection
+                ) {
+                    setNeedSelection(true);
+                    setBranches(response.branches || []);
+                    setDataCount(0);
+                    return;
+                } else {
+                    setNeedSelection(false);
+                }
+
+                setDataCount(response.pagination.total);
+            } catch (error) {
+                console.error("Error fetching data count:", error);
+                setDataCount(0);
+            }
+        },
+        [startDate, endDate, search, divisi, departemen, statusFilter],
+    );
 
     useEffect(() => {
-        fetchDataCount();
-    }, [fetchDataCount]);
+        fetchDataCount(selectedCabangId);
+    }, [fetchDataCount, selectedCabangId]);
 
     // Fetch all data for export
-    const fetchAllData = async (): Promise<AbsensiRecord[]> => {
+    const fetchAllData = async (
+        cabangId?: string,
+    ): Promise<AbsensiRecord[]> => {
         const params: any = {
             page: 1,
             limit: 10000, // Get all data
@@ -92,6 +121,7 @@ const ExportData = () => {
         if (divisi) params.divisi = divisi;
         if (departemen) params.departemen = departemen;
         if (statusFilter) params.status = statusFilter;
+        if (cabangId) params.cabang_id = parseInt(cabangId);
 
         const response = await getRekapAbsensi(params);
         return response.data;
@@ -133,7 +163,7 @@ const ExportData = () => {
         setError("");
 
         try {
-            const data = await fetchAllData();
+            const data = await fetchAllData(selectedCabangId);
 
             if (data.length === 0) {
                 setError("Tidak ada data untuk di-export");
@@ -270,7 +300,7 @@ const ExportData = () => {
         setError("");
 
         try {
-            const data = await fetchAllData();
+            const data = await fetchAllData(selectedCabangId);
 
             if (data.length === 0) {
                 setError("Tidak ada data untuk di-export");
@@ -379,6 +409,11 @@ const ExportData = () => {
         }
     };
 
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchDataCount(cabangId);
+    };
+
     const handleReset = () => {
         setStartDate(
             new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -392,20 +427,99 @@ const ExportData = () => {
         setStatusFilter("");
     };
 
+    if (loading && dataCount === 0) {
+        return (
+            <div className="p-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (dataCount === 0 && needSelection) {
+        return (
+            <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Export Data Absensi
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk mengekspor data absensi
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <FaDownload className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk mengekspor data
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
-            <PageMeta title="Export Data Absensi" />
+            <PageMeta
+                title="Export Data Absensi"
+                description="Ekspor data rekap absensi ke format Excel atau PDF"
+            />
 
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633]">
                 <div className="p-4 md:p-8 space-y-6">
                     {/* Header */}
                     <div className="bg-white dark:bg-[#1e2633] rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
-                            Export Data Absensi
-                        </h2>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Ekspor data rekap absensi ke format Excel atau PDF
-                        </p>
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                                    Export Data Absensi
+                                </h2>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    Ekspor data rekap absensi ke format Excel
+                                    atau PDF
+                                </p>
+                            </div>
+                            {needSelection && branches.length > 0 && (
+                                <select
+                                    value={selectedCabangId}
+                                    onChange={(e) =>
+                                        handleCabangChange(e.target.value)
+                                    }
+                                    className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">-- Ganti Cabang --</option>
+                                    {branches.map((branch) => (
+                                        <option
+                                            key={branch.id}
+                                            value={branch.id}>
+                                            {branch.nama_cabang}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     {error && (

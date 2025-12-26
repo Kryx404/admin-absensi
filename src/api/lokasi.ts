@@ -3,8 +3,10 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 console.log("[Lokasi API] Base URL:", API_BASE);
 
-export async function getAllLokasi() {
-    const url = `${API_BASE}/lokasi`;
+export async function getAllLokasi(cabangId?: number) {
+    const url = cabangId
+        ? `${API_BASE}/lokasi?cabang_id=${cabangId}`
+        : `${API_BASE}/lokasi`;
     const token = localStorage.getItem("token");
     console.log("[Lokasi API] Fetching:", url);
     try {

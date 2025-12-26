@@ -74,6 +74,11 @@ const COLORS = {
     tidak_hadir: "#ef4444",
 };
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const GrafikStatistik = () => {
     const [trendData, setTrendData] = useState<TrendData[]>([]);
     const [employeeData, setEmployeeData] = useState<EmployeeData[]>([]);
@@ -83,6 +88,9 @@ const GrafikStatistik = () => {
     const [summary, setSummary] = useState<Summary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     // Filter states
     const [startDate, setStartDate] = useState("");
@@ -91,60 +99,85 @@ const GrafikStatistik = () => {
     const [departemen, setDepartemen] = useState("");
     const [groupBy, setGroupBy] = useState<"day" | "month">("day");
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        setError("");
+    const fetchData = useCallback(
+        async (cabangId?: string) => {
+            setLoading(true);
+            setError("");
 
-        try {
-            const params: {
-                startDate?: string;
-                endDate?: string;
-                divisi?: string;
-                departemen?: string;
-                groupBy?: "day" | "month" | "employee";
-            } = {};
+            try {
+                const params: {
+                    startDate?: string;
+                    endDate?: string;
+                    divisi?: string;
+                    departemen?: string;
+                    groupBy?: "day" | "month" | "employee";
+                    cabang_id?: number;
+                } = {};
 
-            if (startDate && endDate) {
-                params.startDate = startDate;
-                params.endDate = endDate;
+                if (startDate && endDate) {
+                    params.startDate = startDate;
+                    params.endDate = endDate;
+                }
+                if (divisi) params.divisi = divisi;
+                if (departemen) params.departemen = departemen;
+                if (cabangId) params.cabang_id = parseInt(cabangId);
+
+                // Fetch trend data
+                const trendResponse = await getStatistikAbsensi({
+                    ...params,
+                    groupBy: groupBy,
+                });
+
+                // Check if superadmin needs to select a branch
+                if (
+                    trendResponse &&
+                    "needSelection" in trendResponse &&
+                    trendResponse.needSelection
+                ) {
+                    setNeedSelection(true);
+                    setBranches(trendResponse.branches || []);
+                    setTrendData([]);
+                    setEmployeeData([]);
+                    setDistributionData([]);
+                    setSummary(null);
+                    setLoading(false);
+                    return;
+                } else {
+                    setNeedSelection(false);
+                }
+
+                // Fetch employee comparison
+                const employeeResponse = await getStatistikAbsensi({
+                    ...params,
+                    groupBy: "employee",
+                });
+
+                // Fetch distribution
+                const distributionResponse = await getStatusDistribution(
+                    params,
+                );
+
+                if (trendResponse.success) {
+                    setTrendData(trendResponse.data || []);
+                    setSummary(trendResponse.summary || null);
+                }
+
+                if (employeeResponse.success) {
+                    setEmployeeData(employeeResponse.data || []);
+                }
+
+                if (distributionResponse.success) {
+                    setDistributionData(distributionResponse.data || []);
+                }
+            } catch (err) {
+                console.error("Fetch statistik error:", err);
+                setError("Terjadi kesalahan saat mengambil data statistik");
+            } finally {
+                setLoading(false);
             }
-            if (divisi) params.divisi = divisi;
-            if (departemen) params.departemen = departemen;
-
-            // Fetch trend data
-            const trendResponse = await getStatistikAbsensi({
-                ...params,
-                groupBy: groupBy,
-            });
-
-            // Fetch employee comparison
-            const employeeResponse = await getStatistikAbsensi({
-                ...params,
-                groupBy: "employee",
-            });
-
-            // Fetch distribution
-            const distributionResponse = await getStatusDistribution(params);
-
-            if (trendResponse.success) {
-                setTrendData(trendResponse.data || []);
-                setSummary(trendResponse.summary || null);
-            }
-
-            if (employeeResponse.success) {
-                setEmployeeData(employeeResponse.data || []);
-            }
-
-            if (distributionResponse.success) {
-                setDistributionData(distributionResponse.data || []);
-            }
-        } catch (err) {
-            console.error("Fetch statistik error:", err);
-            setError("Terjadi kesalahan saat mengambil data statistik");
-        } finally {
-            setLoading(false);
-        }
-    }, [startDate, endDate, divisi, departemen, groupBy]);
+        },
+        [startDate, endDate, divisi, departemen, groupBy],
+    );
 
     useEffect(() => {
         // Set default date range (last 30 days)
@@ -158,12 +191,17 @@ const GrafikStatistik = () => {
 
     useEffect(() => {
         if (startDate && endDate) {
-            fetchData();
+            fetchData(selectedCabangId);
         }
-    }, [fetchData, startDate, endDate]);
+    }, [fetchData, startDate, endDate, selectedCabangId]);
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchData(cabangId);
+    };
 
     const handleSearch = () => {
-        fetchData();
+        fetchData(selectedCabangId);
     };
 
     const handleResetFilter = () => {
@@ -229,6 +267,60 @@ const GrafikStatistik = () => {
         return null;
     };
 
+    if (loading) {
+        return (
+            <div className="p-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!trendData.length && needSelection) {
+        return (
+            <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Grafik Statistik Kehadiran
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat statistik kehadiran
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <FaChartLine className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat data statistik
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             <PageMeta
@@ -237,9 +329,26 @@ const GrafikStatistik = () => {
             />
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
                 <div className="max-w-[1600px] mx-auto">
-                    <h1 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-                        Grafik Statistik Kehadiran
-                    </h1>
+                    <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
+                            Grafik Statistik Kehadiran
+                        </h1>
+                        {needSelection && branches.length > 0 && (
+                            <select
+                                value={selectedCabangId}
+                                onChange={(e) =>
+                                    handleCabangChange(e.target.value)
+                                }
+                                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Ganti Cabang --</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.nama_cabang}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
 
                     {/* Filter Section */}
                     <div className="bg-white dark:bg-[#181f2a] rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:border-gray-700">

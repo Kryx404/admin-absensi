@@ -41,12 +41,20 @@ type Summary = {
     persentase_kehadiran: number;
 };
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const StatusRealtime = () => {
     const [data, setData] = useState<RealtimeData[]>([]);
     const [summary, setSummary] = useState<Summary | null>(null);
     const [tanggal, setTanggal] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     // Filter states
     const [search, setSearch] = useState("");
@@ -57,9 +65,31 @@ const StatusRealtime = () => {
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("ASC");
 
     // Fetch summary (without filters) - always shows all data
-    const fetchSummary = useCallback(async () => {
+    const fetchSummary = useCallback(async (cabangId?: string) => {
         try {
-            const response = await getRealtimeStatus({});
+            const params: {
+                cabang_id?: number;
+            } = {};
+
+            if (cabangId) params.cabang_id = parseInt(cabangId);
+
+            const response = await getRealtimeStatus(params);
+
+            // Check if superadmin needs to select a branch
+            if (
+                response &&
+                "needSelection" in response &&
+                response.needSelection
+            ) {
+                setNeedSelection(true);
+                setBranches(response.branches || []);
+                setSummary(null);
+                setTanggal("");
+                return;
+            } else {
+                setNeedSelection(false);
+            }
+
             if (response.success) {
                 setSummary(response.summary || null);
                 setTanggal(response.tanggal || "");
@@ -70,51 +100,74 @@ const StatusRealtime = () => {
     }, []);
 
     // Fetch table data (with filters)
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        setError("");
+    const fetchData = useCallback(
+        async (cabangId?: string) => {
+            setLoading(true);
+            setError("");
 
-        try {
-            const params: {
-                search?: string;
-                divisi?: string;
-                departemen?: string;
-                position?: string;
-                sortBy?: string;
-                sortOrder?: "ASC" | "DESC";
-            } = {
-                sortBy,
-                sortOrder,
-            };
+            try {
+                const params: {
+                    search?: string;
+                    divisi?: string;
+                    departemen?: string;
+                    position?: string;
+                    sortBy?: string;
+                    sortOrder?: "ASC" | "DESC";
+                    cabang_id?: number;
+                } = {
+                    sortBy,
+                    sortOrder,
+                };
 
-            if (search) params.search = search;
-            if (divisi) params.divisi = divisi;
-            if (departemen) params.departemen = departemen;
-            if (position) params.position = position;
+                if (search) params.search = search;
+                if (divisi) params.divisi = divisi;
+                if (departemen) params.departemen = departemen;
+                if (position) params.position = position;
+                if (cabangId) params.cabang_id = parseInt(cabangId);
 
-            const response = await getRealtimeStatus(params);
+                const response = await getRealtimeStatus(params);
 
-            if (response.success) {
-                setData(response.data || []);
-                // Don't update summary here, keep the original summary
-            } else {
-                setError("Gagal mengambil data status realtime");
+                // Check if superadmin needs to select a branch
+                if (
+                    response &&
+                    "needSelection" in response &&
+                    response.needSelection
+                ) {
+                    setNeedSelection(true);
+                    setBranches(response.branches || []);
+                    setData([]);
+                } else {
+                    setNeedSelection(false);
+                    if (response.success) {
+                        setData(response.data || []);
+                        // Don't update summary here, keep the original summary
+                    } else {
+                        setError("Gagal mengambil data status realtime");
+                    }
+                }
+            } catch (err) {
+                console.error("Fetch realtime error:", err);
+                setError("Terjadi kesalahan saat mengambil data");
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error("Fetch realtime error:", err);
-            setError("Terjadi kesalahan saat mengambil data");
-        } finally {
-            setLoading(false);
-        }
-    }, [search, divisi, departemen, position, sortBy, sortOrder]);
+        },
+        [search, divisi, departemen, position, sortBy, sortOrder],
+    );
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchSummary(cabangId);
+        fetchData(cabangId);
+    };
 
     const handleSearch = () => {
-        fetchData();
+        fetchData(selectedCabangId);
     };
 
     const handleRefresh = () => {
-        fetchSummary(); // Refresh summary
-        fetchData(); // Refresh table data
+        fetchSummary(selectedCabangId); // Refresh summary
+        fetchData(selectedCabangId); // Refresh table data
     };
 
     const handleResetFilter = () => {
@@ -124,7 +177,7 @@ const StatusRealtime = () => {
         setPosition("");
         setSortBy("name");
         setSortOrder("ASC");
-        setTimeout(() => fetchData(), 100);
+        setTimeout(() => fetchData(selectedCabangId), 100);
     };
 
     const handleSort = (field: string) => {
@@ -138,14 +191,14 @@ const StatusRealtime = () => {
 
     // Initial fetch on mount
     useEffect(() => {
-        fetchSummary(); // Fetch summary once on mount
-        fetchData(); // Fetch table data
-    }, [fetchSummary, fetchData]);
+        fetchSummary(selectedCabangId); // Fetch summary once on mount
+        fetchData(selectedCabangId); // Fetch table data
+    }, [fetchSummary, fetchData, selectedCabangId]);
 
     // Fetch data when sort changes
     useEffect(() => {
         if (data.length > 0) {
-            fetchData();
+            fetchData(selectedCabangId);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sortBy, sortOrder]);
@@ -153,12 +206,12 @@ const StatusRealtime = () => {
     // Auto refresh every 30 seconds
     useEffect(() => {
         const interval = setInterval(() => {
-            fetchSummary(); // Refresh summary
-            fetchData(); // Refresh table data
+            fetchSummary(selectedCabangId); // Refresh summary
+            fetchData(selectedCabangId); // Refresh table data
         }, 30000); // 30 seconds
 
         return () => clearInterval(interval);
-    }, [fetchSummary, fetchData]);
+    }, [fetchSummary, fetchData, selectedCabangId]);
 
     const getStatusBadge = (status: string) => {
         const statusMap: Record<string, { label: string; className: string }> =
@@ -226,6 +279,60 @@ const StatusRealtime = () => {
         return "hover:bg-gray-50 dark:hover:bg-gray-800";
     };
 
+    if (loading && !data.length) {
+        return (
+            <div className="p-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!data.length && needSelection) {
+        return (
+            <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Status Kehadiran Realtime
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat status kehadiran realtime
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <FaUsers className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat data kehadiran
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             <PageMeta
@@ -234,7 +341,7 @@ const StatusRealtime = () => {
             />
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
                 <div className="max-w-[1600px] mx-auto">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
                                 Status Kehadiran Realtime
@@ -245,13 +352,34 @@ const StatusRealtime = () => {
                                 </p>
                             )}
                         </div>
-                        <button
-                            onClick={handleRefresh}
-                            disabled={loading}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50">
-                            <FaSync className={loading ? "animate-spin" : ""} />
-                            Refresh
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {needSelection && branches.length > 0 && (
+                                <select
+                                    value={selectedCabangId}
+                                    onChange={(e) =>
+                                        handleCabangChange(e.target.value)
+                                    }
+                                    className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">-- Ganti Cabang --</option>
+                                    {branches.map((branch) => (
+                                        <option
+                                            key={branch.id}
+                                            value={branch.id}>
+                                            {branch.nama_cabang}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <button
+                                onClick={handleRefresh}
+                                disabled={loading}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50">
+                                <FaSync
+                                    className={loading ? "animate-spin" : ""}
+                                />
+                                Refresh
+                            </button>
+                        </div>
                     </div>
 
                     {/* Summary Cards */}

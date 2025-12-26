@@ -3,8 +3,10 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 console.log("[User API] Base URL:", API_BASE);
 
-export async function getAllUsers() {
-    const url = `${API_BASE}/users`;
+export async function getAllUsers(cabangId?: number) {
+    const url = cabangId
+        ? `${API_BASE}/users?cabang_id=${cabangId}`
+        : `${API_BASE}/users`;
     const token = localStorage.getItem("token");
     console.log("[User API] Fetching:", url);
     try {

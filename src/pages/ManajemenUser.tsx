@@ -15,23 +15,42 @@ interface User {
     status?: string;
 }
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const ManajemenUser: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState<Partial<User>>({});
     const [editId, setEditId] = useState<string | null>(null);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (cabangId?: string) => {
         setLoading(true);
         try {
-            const data = await getAllUsers();
-            // Backend response: { success: true, data: [...], count: n }
-            if (Array.isArray(data)) {
-                setUsers(data);
-            } else if (data && Array.isArray(data.data)) {
-                setUsers(data.data);
-            } else {
+            const data = await getAllUsers(
+                cabangId ? parseInt(cabangId) : undefined,
+            );
+
+            // Check if superadmin needs to select a branch
+            if (data && "needSelection" in data && data.needSelection) {
+                setNeedSelection(true);
+                setBranches(data.branches || []);
                 setUsers([]);
+            } else {
+                setNeedSelection(false);
+                // Backend response: { success: true, data: [...], count: n }
+                if (Array.isArray(data)) {
+                    setUsers(data);
+                } else if (data && Array.isArray(data.data)) {
+                    setUsers(data.data);
+                } else {
+                    setUsers([]);
+                }
             }
         } catch (e: any) {
             toast.error(e.message || "Gagal mengambil data user");
@@ -43,6 +62,11 @@ const ManajemenUser: React.FC = () => {
     useEffect(() => {
         fetchUsers();
     }, []);
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchUsers(cabangId);
+    };
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -78,18 +102,106 @@ const ManajemenUser: React.FC = () => {
         try {
             await deleteUser(id);
             toast.success("User berhasil dihapus!");
-            fetchUsers();
+            fetchUsers(selectedCabangId);
         } catch (e: any) {
             toast.error(e.message || "Gagal menghapus user");
-            setError(e.message || "Gagal hapus user");
         }
     };
 
+    if (loading) {
+        return (
+            <div className="p-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data user...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!users.length && needSelection) {
+        return (
+            <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Manajemen Pengguna & Hak Akses
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat dan mengelola data user
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <svg
+                                className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                                />
+                            </svg>
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat data user
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">
-                Manajemen Pengguna & Hak Akses
-            </h2>
+            <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h2 className="text-xl font-bold mb-1">
+                        Manajemen Pengguna & Hak Akses
+                    </h2>
+                    {users.length > 0 &&
+                        users[0] &&
+                        "nama_cabang" in users[0] && (
+                            <p className="text-sm text-gray-600">
+                                Cabang: {(users[0] as any).nama_cabang}
+                            </p>
+                        )}
+                </div>
+                {needSelection && branches.length > 0 && (
+                    <select
+                        value={selectedCabangId}
+                        onChange={(e) => handleCabangChange(e.target.value)}
+                        className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Ganti Cabang --</option>
+                        {branches.map((branch) => (
+                            <option key={branch.id} value={branch.id}>
+                                {branch.nama_cabang}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
             <form
                 onSubmit={handleSubmit}
                 className="mb-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">

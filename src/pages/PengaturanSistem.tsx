@@ -11,6 +11,9 @@ const PengaturanSistem = () => {
     const [pengaturan, setPengaturan] = useState<PengaturanCabang | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     const days = [
         { key: "senin", label: "Senin" },
@@ -26,17 +29,31 @@ const PengaturanSistem = () => {
         loadPengaturan();
     }, []);
 
-    const loadPengaturan = async () => {
+    const loadPengaturan = async (cabangId?: string) => {
         try {
             setLoading(true);
-            const data = await getPengaturan();
-            setPengaturan(data);
+            const data = await getPengaturan(cabangId);
+
+            // Check if superadmin needs to select a branch
+            if ("needSelection" in data && data.needSelection) {
+                setNeedSelection(true);
+                setBranches(data.branches || []);
+                setPengaturan(null);
+            } else {
+                setNeedSelection(false);
+                setPengaturan(data as PengaturanCabang);
+            }
         } catch (err) {
             toast.error("Gagal memuat pengaturan");
             console.error(err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        loadPengaturan(cabangId);
     };
 
     const handleJamKerjaChange = (
@@ -136,6 +153,58 @@ const PengaturanSistem = () => {
         );
     }
 
+    if (!pengaturan && needSelection) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                            Pengaturan Sistem
+                        </h1>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat dan mengelola pengaturan
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-8 shadow-sm">
+                        <div className="text-center mb-6">
+                            <svg
+                                className="w-16 h-16 mx-auto text-blue-500 mb-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                            </svg>
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat pengaturan
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!pengaturan) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
@@ -165,23 +234,40 @@ const PengaturanSistem = () => {
                     <p className="text-gray-600 dark:text-gray-400">
                         Konfigurasi pengaturan aplikasi absensi
                     </p>
-                    {pengaturan.nama_cabang && (
-                        <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium">
-                            <svg
-                                className="w-4 h-4 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                />
-                            </svg>
-                            {pengaturan.nama_cabang}
-                        </div>
-                    )}
+                    <div className="mt-4 flex items-center gap-4 flex-wrap">
+                        {pengaturan.nama_cabang && (
+                            <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium">
+                                <svg
+                                    className="w-4 h-4 mr-2"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                    />
+                                </svg>
+                                {pengaturan.nama_cabang}
+                            </div>
+                        )}
+                        {needSelection && branches.length > 0 && (
+                            <select
+                                value={selectedCabangId}
+                                onChange={(e) =>
+                                    handleCabangChange(e.target.value)
+                                }
+                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent">
+                                <option value="">-- Ganti Cabang --</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.nama_cabang}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                 </div>
 
                 {/* Jam Kerja Section */}

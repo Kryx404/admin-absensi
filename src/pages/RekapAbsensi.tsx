@@ -48,6 +48,11 @@ type Pagination = {
     totalPages: number;
 };
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const RekapAbsensi = () => {
     const [data, setData] = useState<AbsensiRecord[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
@@ -58,6 +63,9 @@ const RekapAbsensi = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     // Filter states
     const [startDate, setStartDate] = useState("");
@@ -70,7 +78,7 @@ const RekapAbsensi = () => {
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
 
     const fetchData = useCallback(
-        async (page: number = 1) => {
+        async (page: number = 1, cabangId?: string) => {
             setLoading(true);
             setError("");
 
@@ -86,6 +94,7 @@ const RekapAbsensi = () => {
                     divisi?: string;
                     departemen?: string;
                     status?: string;
+                    cabang_id?: number;
                 } = {
                     page,
                     limit: 25,
@@ -102,14 +111,33 @@ const RekapAbsensi = () => {
                 if (divisi) params.divisi = divisi;
                 if (departemen) params.departemen = departemen;
                 if (statusFilter) params.status = statusFilter;
+                if (cabangId) params.cabang_id = parseInt(cabangId);
 
                 const response = await getRekapAbsensi(params);
 
-                if (response.success) {
-                    setData(response.data || []);
-                    setPagination(response.pagination);
+                // Check if superadmin needs to select a branch
+                if (
+                    response &&
+                    "needSelection" in response &&
+                    response.needSelection
+                ) {
+                    setNeedSelection(true);
+                    setBranches(response.branches || []);
+                    setData([]);
+                    setPagination({
+                        page: 1,
+                        limit: 25,
+                        total: 0,
+                        totalPages: 0,
+                    });
                 } else {
-                    setError("Gagal mengambil data rekap absensi");
+                    setNeedSelection(false);
+                    if (response.success) {
+                        setData(response.data || []);
+                        setPagination(response.pagination);
+                    } else {
+                        setError("Gagal mengambil data rekap absensi");
+                    }
                 }
             } catch (err) {
                 console.error("Fetch rekap error:", err);
@@ -131,11 +159,16 @@ const RekapAbsensi = () => {
     );
 
     useEffect(() => {
-        fetchData(1);
-    }, [fetchData]);
+        fetchData(1, selectedCabangId);
+    }, [fetchData, selectedCabangId]);
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchData(1, cabangId);
+    };
 
     const handleSearch = () => {
-        fetchData(1);
+        fetchData(1, selectedCabangId);
     };
 
     const handleResetFilter = () => {
@@ -147,7 +180,7 @@ const RekapAbsensi = () => {
         setStatusFilter("");
         setSortBy("tanggal");
         setSortOrder("DESC");
-        setTimeout(() => fetchData(1), 100);
+        setTimeout(() => fetchData(1, selectedCabangId), 100);
     };
 
     const handleSort = (field: string) => {
@@ -224,6 +257,60 @@ const RekapAbsensi = () => {
         return `${(distance / 1000).toFixed(2)}km`;
     };
 
+    if (loading) {
+        return (
+            <div className="p-6">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!data.length && needSelection) {
+        return (
+            <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Rekap Absensi Harian/Bulanan
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat data rekap absensi
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <FaCalendar className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat data rekap absensi
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             <PageMeta
@@ -232,9 +319,26 @@ const RekapAbsensi = () => {
             />
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
                 <div className="max-w-[1600px] mx-auto">
-                    <h1 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-                        Rekap Absensi Harian/Bulanan
-                    </h1>
+                    <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
+                            Rekap Absensi Harian/Bulanan
+                        </h1>
+                        {needSelection && branches.length > 0 && (
+                            <select
+                                value={selectedCabangId}
+                                onChange={(e) =>
+                                    handleCabangChange(e.target.value)
+                                }
+                                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Ganti Cabang --</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.nama_cabang}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
 
                     {/* Filter Section */}
                     <div className="bg-white dark:bg-[#181f2a] rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:border-gray-700">
@@ -604,7 +708,10 @@ const RekapAbsensi = () => {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() =>
-                                                fetchData(pagination.page - 1)
+                                                fetchData(
+                                                    pagination.page - 1,
+                                                    selectedCabangId,
+                                                )
                                             }
                                             disabled={pagination.page === 1}
                                             className="px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
@@ -617,7 +724,10 @@ const RekapAbsensi = () => {
                                         </span>
                                         <button
                                             onClick={() =>
-                                                fetchData(pagination.page + 1)
+                                                fetchData(
+                                                    pagination.page + 1,
+                                                    selectedCabangId,
+                                                )
                                             }
                                             disabled={
                                                 pagination.page ===

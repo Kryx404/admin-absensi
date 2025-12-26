@@ -27,9 +27,15 @@ export interface PengaturanCabang {
     updated_at?: string;
 }
 
-export const getPengaturan = async (): Promise<PengaturanCabang> => {
+export const getPengaturan = async (
+    cabangId?: string,
+): Promise<PengaturanCabang | { needSelection: boolean; branches: any[] }> => {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_BASE_URL}/pengaturan`, {
+    const url = cabangId
+        ? `${API_BASE_URL}/pengaturan?cabang_id=${cabangId}`
+        : `${API_BASE_URL}/pengaturan`;
+
+    const response = await fetch(url, {
         headers: {
             Authorization: `Bearer ${token}`,
         },
@@ -40,6 +46,12 @@ export const getPengaturan = async (): Promise<PengaturanCabang> => {
     }
 
     const data = await response.json();
+
+    // Jika response berisi needSelection, return as is
+    if (data.needSelection) {
+        return data;
+    }
+
     return data.data;
 };
 

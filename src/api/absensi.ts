@@ -73,6 +73,7 @@ export async function getRekapAbsensi(params: {
     sortOrder?: "ASC" | "DESC";
     page?: number;
     limit?: number;
+    cabang_id?: number;
 }) {
     const queryParams = new URLSearchParams();
 
@@ -109,6 +110,7 @@ export async function getRekapSummary(params: {
     endDate?: string;
     month?: number;
     year?: number;
+    cabang_id?: number;
 }) {
     const queryParams = new URLSearchParams();
 
@@ -146,6 +148,7 @@ export async function getStatistikAbsensi(params: {
     divisi?: string;
     departemen?: string;
     groupBy?: "day" | "month" | "employee";
+    cabang_id?: number;
 }) {
     const queryParams = new URLSearchParams();
 
@@ -182,6 +185,7 @@ export async function getStatusDistribution(params: {
     year?: number;
     divisi?: string;
     departemen?: string;
+    cabang_id?: number;
 }) {
     const queryParams = new URLSearchParams();
 
@@ -218,6 +222,7 @@ export async function getRealtimeStatus(params: {
     position?: string;
     sortBy?: string;
     sortOrder?: "ASC" | "DESC";
+    cabang_id?: number;
 }) {
     const queryParams = new URLSearchParams();
 

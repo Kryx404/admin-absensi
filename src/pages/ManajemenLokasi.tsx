@@ -41,6 +41,11 @@ interface Lokasi {
     is_active: boolean;
 }
 
+interface Branch {
+    id: number;
+    nama_cabang: string;
+}
+
 const ManajemenLokasi: React.FC = () => {
     const [lokasi, setLokasi] = useState<Lokasi[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,6 +55,9 @@ const ManajemenLokasi: React.FC = () => {
     });
     const [editId, setEditId] = useState<number | null>(null);
     const [showMap, setShowMap] = useState(false);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedCabangId, setSelectedCabangId] = useState<string>("");
+    const [needSelection, setNeedSelection] = useState(false);
 
     // Component untuk handle klik di map
     function LocationMarker() {
@@ -90,17 +98,28 @@ const ManajemenLokasi: React.FC = () => {
         ) : null;
     }
 
-    const fetchLokasi = async () => {
+    const fetchLokasi = async (cabangId?: string) => {
         setLoading(true);
         try {
-            const data = await getAllLokasi();
-            // Backend response: { success: true, data: [...] }
-            if (Array.isArray(data)) {
-                setLokasi(data);
-            } else if (data && Array.isArray(data.data)) {
-                setLokasi(data.data);
-            } else {
+            const data = await getAllLokasi(
+                cabangId ? parseInt(cabangId) : undefined,
+            );
+
+            // Check if superadmin needs to select a branch
+            if (data && "needSelection" in data && data.needSelection) {
+                setNeedSelection(true);
+                setBranches(data.branches || []);
                 setLokasi([]);
+            } else {
+                setNeedSelection(false);
+                // Backend response: { success: true, data: [...] }
+                if (Array.isArray(data)) {
+                    setLokasi(data);
+                } else if (data && Array.isArray(data.data)) {
+                    setLokasi(data.data);
+                } else {
+                    setLokasi([]);
+                }
             }
         } catch (e: any) {
             toast.error(e.message || "Gagal mengambil data lokasi");
@@ -162,11 +181,16 @@ const ManajemenLokasi: React.FC = () => {
             setForm({ radius: 100, is_active: true });
             setEditId(null);
             setShowMap(false);
-            fetchLokasi();
+            fetchLokasi(selectedCabangId);
         } catch (e: any) {
             console.error("Submit error:", e);
             toast.error(e.message || "Gagal simpan lokasi");
         }
+    };
+
+    const handleCabangChange = (cabangId: string) => {
+        setSelectedCabangId(cabangId);
+        fetchLokasi(cabangId);
     };
 
     const handleEdit = (lok: Lokasi) => {
@@ -192,7 +216,7 @@ const ManajemenLokasi: React.FC = () => {
         try {
             await deleteLokasi(id.toString());
             toast.success("Lokasi berhasil dihapus!");
-            fetchLokasi();
+            fetchLokasi(selectedCabangId);
         } catch (e: any) {
             toast.error(e.message || "Gagal hapus lokasi");
         }
@@ -241,12 +265,81 @@ const ManajemenLokasi: React.FC = () => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Memuat data lokasi...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!lokasi.length && needSelection) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                            Manajemen Lokasi Kantor
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Pilih cabang untuk melihat dan mengelola data lokasi
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-md border border-gray-200 dark:border-gray-700">
+                        <div className="text-center mb-6">
+                            <FaMapMarkerAlt className="w-16 h-16 mx-auto text-blue-500 dark:text-blue-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                                Pilih Cabang
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                Pilih cabang untuk melihat data lokasi
+                            </p>
+                        </div>
+
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent text-lg">
+                            <option value="">-- Pilih Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-[#151a23] dark:via-[#181f2a] dark:to-[#1e2633] py-8 px-2 md:px-8">
             <div className="max-w-[1600px] mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-                    Manajemen Lokasi Kantor
-                </h2>
+                <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
+                        Manajemen Lokasi Kantor
+                    </h2>
+                    {needSelection && branches.length > 0 && (
+                        <select
+                            value={selectedCabangId}
+                            onChange={(e) => handleCabangChange(e.target.value)}
+                            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Ganti Cabang --</option>
+                            {branches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>
+                                    {branch.nama_cabang}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
 
                 {editId && (
                     <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
