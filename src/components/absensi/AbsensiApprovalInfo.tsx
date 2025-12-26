@@ -8,9 +8,11 @@ const AbsensiApprovalInfo = () => {
     ];
     return (
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-            <h3 className="font-semibold mb-2">Approval Izin & Cuti</h3>
+            <h3 className="font-semibold mb-2 text-gray-800 dark:text-gray-100">
+                Approval Izin & Cuti
+            </h3>
             {waiting.length === 0 ? (
-                <div className="text-gray-400">
+                <div className="text-gray-400 dark:text-gray-500">
                     Tidak ada pengajuan menunggu approval.
                 </div>
             ) : (
