@@ -80,12 +80,14 @@ const AbsensiRealtimeStatus = () => {
                 setHadir(
                     users
                         .filter((u) => absenUserIds.has(String(u.id)))
-                        .map((u) => u.name),
+                        .map((u) => u.name)
+                        .slice(0, 10), // Limit 10 teratas
                 );
                 setBelum(
                     users
                         .filter((u) => !absenUserIds.has(String(u.id)))
-                        .map((u) => u.name),
+                        .map((u) => u.name)
+                        .slice(0, 10), // Limit 10 teratas
                 );
                 setLastUpdate(new Date());
                 setLoading(false);
