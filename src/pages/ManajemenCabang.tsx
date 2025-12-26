@@ -169,14 +169,6 @@ export default function ManajemenCabang() {
                         )}
                     </div>
 
-                    {error && (
-                        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                            <p className="text-red-600 dark:text-red-400">
-                                {error}
-                            </p>
-                        </div>
-                    )}
-
                     {showForm && (
                         <div className="mb-6 bg-white dark:bg-[#1e2633] rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                             <div className="flex items-center justify-between mb-4">
