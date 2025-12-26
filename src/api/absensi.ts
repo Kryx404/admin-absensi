@@ -5,9 +5,14 @@ console.log("[Absensi API] Base URL:", API_BASE);
 
 export async function getAllAbsensi() {
     const url = `${API_BASE}/absensi`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching:", url);
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         console.log("[Absensi API] Response status:", res.status);
         if (!res.ok) throw new Error("Gagal mengambil data absensi");
         const data = await res.json();
@@ -78,10 +83,15 @@ export async function getRekapAbsensi(params: {
     });
 
     const url = `${API_BASE}/absensi/rekap?${queryParams.toString()}`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching rekap:", url);
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         console.log("[Absensi API] Rekap response status:", res.status);
         if (!res.ok) throw new Error("Gagal mengambil rekap absensi");
         const data = await res.json();
@@ -109,10 +119,15 @@ export async function getRekapSummary(params: {
     });
 
     const url = `${API_BASE}/absensi/rekap/summary?${queryParams.toString()}`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching summary:", url);
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         if (!res.ok) throw new Error("Gagal mengambil summary rekap");
         const data = await res.json();
         return data;
@@ -141,10 +156,15 @@ export async function getStatistikAbsensi(params: {
     });
 
     const url = `${API_BASE}/statistik?${queryParams.toString()}`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching statistik:", url);
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         if (!res.ok) throw new Error("Gagal mengambil statistik absensi");
         const data = await res.json();
         return data;
@@ -172,10 +192,15 @@ export async function getStatusDistribution(params: {
     });
 
     const url = `${API_BASE}/statistik/distribution?${queryParams.toString()}`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching distribution:", url);
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         if (!res.ok) throw new Error("Gagal mengambil distribusi status");
         const data = await res.json();
         return data;
@@ -203,10 +228,15 @@ export async function getRealtimeStatus(params: {
     });
 
     const url = `${API_BASE}/realtime?${queryParams.toString()}`;
+    const token = localStorage.getItem("token");
     console.log("[Absensi API] Fetching realtime status:", url);
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         if (!res.ok) throw new Error("Gagal mengambil status realtime");
         const data = await res.json();
         return data;

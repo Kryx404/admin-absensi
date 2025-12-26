@@ -5,9 +5,14 @@ console.log("[User API] Base URL:", API_BASE);
 
 export async function getAllUsers() {
     const url = `${API_BASE}/users`;
+    const token = localStorage.getItem("token");
     console.log("[User API] Fetching:", url);
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         console.log("[User API] Response status:", res.status);
         if (!res.ok) throw new Error("Gagal mengambil data user");
         const data = await res.json();
@@ -20,15 +25,24 @@ export async function getAllUsers() {
 }
 
 export async function getUserById(id: string) {
-    const res = await fetch(`${API_BASE}/users/${id}`);
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
     if (!res.ok) throw new Error("Gagal mengambil data user");
     return res.json();
 }
 
 export async function createUser(data: any) {
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE}/users`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Gagal membuat user");
@@ -37,11 +51,15 @@ export async function createUser(data: any) {
 
 export async function updateUser(id: string, data: any) {
     const url = `${API_BASE}/users/${id}`;
+    const token = localStorage.getItem("token");
     console.log("[User API] Updating user:", url, data);
     try {
         const res = await fetch(url, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify(data),
         });
         console.log("[User API] Update response status:", res.status);
@@ -67,8 +85,12 @@ export async function updateUser(id: string, data: any) {
 }
 
 export async function deleteUser(id: string) {
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE}/users/${id}`, {
         method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
     });
     if (!res.ok) throw new Error("Gagal hapus user");
     return res.json();
