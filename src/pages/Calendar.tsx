@@ -147,6 +147,33 @@ const Calendar: React.FC = () => {
                 description="This is React.js Calendar Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
             />
             <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <style>{`
+                    /* Warna merah untuk hari Minggu */
+                    .fc .fc-col-header-cell.fc-day-sun {
+                        background-color: rgba(239, 68, 68, 0.1);
+                    }
+                    .fc .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+                        color: #dc2626;
+                        font-weight: 600;
+                    }
+                    .fc .fc-daygrid-day.fc-day-sun {
+                        background-color: rgba(254, 226, 226, 0.3);
+                    }
+                    .fc .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+                        color: #dc2626;
+                        font-weight: 600;
+                    }
+                    /* Dark mode */
+                    .dark .fc .fc-col-header-cell.fc-day-sun {
+                        background-color: rgba(220, 38, 38, 0.15);
+                    }
+                    .dark .fc .fc-daygrid-day.fc-day-sun {
+                        background-color: rgba(220, 38, 38, 0.1);
+                    }
+                    .dark .fc .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+                        color: #f87171;
+                    }
+                `}</style>
                 <div className="custom-calendar">
                     <FullCalendar
                         ref={calendarRef}
