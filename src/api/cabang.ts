@@ -72,3 +72,33 @@ export const getDashboardStats = async () => {
     });
     return response.data;
 };
+
+// Toggle status cabang (activate/deactivate)
+export const toggleStatusCabang = async (
+    id: number,
+    status: "active" | "inactive",
+) => {
+    const response = await axios.put(
+        `${API_URL}/cabang/${id}/toggle-status`,
+        { status },
+        {
+            headers: getAuthHeaders(),
+        },
+    );
+    return response.data;
+};
+
+// Extend subscription cabang
+export const extendSubscription = async (
+    id: number,
+    data: { subscription_end: string; paket?: string },
+) => {
+    const response = await axios.put(
+        `${API_URL}/cabang/${id}/extend-subscription`,
+        data,
+        {
+            headers: getAuthHeaders(),
+        },
+    );
+    return response.data;
+};
