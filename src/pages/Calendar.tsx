@@ -85,12 +85,7 @@ const Calendar: React.FC = () => {
             });
     }, []);
 
-    const handleDateSelect = (selectInfo: DateSelectArg) => {
-        resetModalFields();
-        setEventStartDate(selectInfo.startStr);
-        setEventEndDate(selectInfo.endStr || selectInfo.startStr);
-        openModal();
-    };
+    // handleDateSelect removed - viewing only, no create allowed
 
     const handleEventClick = (clickInfo: EventClickArg) => {
         const event = clickInfo.event as unknown as CalendarEvent;
@@ -162,21 +157,14 @@ const Calendar: React.FC = () => {
                         ]}
                         initialView="dayGridMonth"
                         headerToolbar={{
-                            left: "prev,next addEventButton",
+                            left: "prev,next",
                             center: "title",
                             right: "dayGridMonth,timeGridWeek,timeGridDay",
                         }}
                         events={events}
-                        selectable={true}
-                        select={handleDateSelect}
+                        selectable={false}
                         eventClick={handleEventClick}
                         eventContent={renderEventContent}
-                        customButtons={{
-                            addEventButton: {
-                                text: "Add Event +",
-                                click: openModal,
-                            },
-                        }}
                     />
                 </div>
                 <Modal
@@ -189,8 +177,8 @@ const Calendar: React.FC = () => {
                                 {selectedEvent
                                     ? isLiburNasional
                                         ? "Detail Libur Nasional"
-                                        : "Edit Event"
-                                    : "Add Event"}
+                                        : "Detail Event"
+                                    : "Detail Event"}
                             </h5>
                             {isLiburNasional && (
                                 <span className="inline-block mb-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold border border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
@@ -199,8 +187,7 @@ const Calendar: React.FC = () => {
                                 </span>
                             )}
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Plan your next big moment: schedule atau lihat
-                                detail event.
+                                Lihat detail event yang sudah terjadwal.
                             </p>
                         </div>
                         <div className="mt-8">
@@ -217,7 +204,7 @@ const Calendar: React.FC = () => {
                                             setEventTitle(e.target.value)
                                         }
                                         className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                        disabled={isLiburNasional}
+                                        disabled={true}
                                     />
                                 </div>
                             </div>
@@ -250,9 +237,7 @@ const Calendar: React.FC = () => {
                                                                         key,
                                                                     )
                                                                 }
-                                                                disabled={
-                                                                    isLiburNasional
-                                                                }
+                                                                disabled={true}
                                                             />
                                                             <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 rounded-full box dark:border-gray-700">
                                                                 <span
@@ -278,7 +263,7 @@ const Calendar: React.FC = () => {
                                             setEventStartDate(e.target.value)
                                         }
                                         className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                        disabled={isLiburNasional}
+                                        disabled={true}
                                     />
                                 </div>
                             </div>
@@ -296,7 +281,7 @@ const Calendar: React.FC = () => {
                                             setEventEndDate(e.target.value)
                                         }
                                         className="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                        disabled={isLiburNasional}
+                                        disabled={true}
                                     />
                                 </div>
                             </div>
@@ -305,23 +290,8 @@ const Calendar: React.FC = () => {
                             <button
                                 onClick={closeModal}
                                 type="button"
-                                className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto">
-                                Close
-                            </button>
-                            <button
-                                onClick={handleAddOrUpdateEvent}
-                                type="button"
-                                className={`btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto ${
-                                    isLiburNasional
-                                        ? "opacity-60 cursor-not-allowed"
-                                        : ""
-                                }`}
-                                disabled={isLiburNasional}>
-                                {selectedEvent
-                                    ? isLiburNasional
-                                        ? "Tidak Bisa Diedit"
-                                        : "Update Changes"
-                                    : "Add Event"}
+                                className="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto">
+                                Tutup
                             </button>
                         </div>
                     </div>
