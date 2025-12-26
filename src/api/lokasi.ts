@@ -5,9 +5,14 @@ console.log("[Lokasi API] Base URL:", API_BASE);
 
 export async function getAllLokasi() {
     const url = `${API_BASE}/lokasi`;
+    const token = localStorage.getItem("token");
     console.log("[Lokasi API] Fetching:", url);
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
         console.log("[Lokasi API] Response status:", res.status);
         if (!res.ok) throw new Error("Gagal mengambil data lokasi");
         const data = await res.json();
@@ -20,15 +25,24 @@ export async function getAllLokasi() {
 }
 
 export async function getLokasiById(id: string) {
-    const res = await fetch(`${API_BASE}/lokasi/${id}`);
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/lokasi/${id}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
     if (!res.ok) throw new Error("Gagal mengambil data lokasi");
     return res.json();
 }
 
 export async function createLokasi(data: any) {
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE}/lokasi`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Gagal membuat lokasi");
@@ -36,9 +50,13 @@ export async function createLokasi(data: any) {
 }
 
 export async function updateLokasi(id: string, data: any) {
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE}/lokasi/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Gagal update lokasi");
@@ -46,8 +64,12 @@ export async function updateLokasi(id: string, data: any) {
 }
 
 export async function deleteLokasi(id: string) {
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE}/lokasi/${id}`, {
         method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
     });
     if (!res.ok) throw new Error("Gagal hapus lokasi");
     return res.json();
