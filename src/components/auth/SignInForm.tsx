@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import toast from "react-hot-toast";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -11,26 +12,25 @@ export default function SignInForm() {
     const [isChecked, setIsChecked] = useState(false);
     const [nik, setNik] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
         setLoading(true);
 
         try {
             const response = await login({ nik, password });
 
             if (response.success) {
+                toast.success("Login berhasil! Selamat datang.");
                 // Redirect ke dashboard
                 navigate("/");
             } else {
-                setError(response.message || "Login gagal");
+                toast.error(response.message || "Login gagal");
             }
         } catch (err) {
-            setError("Terjadi kesalahan saat login");
+            toast.error("Terjadi kesalahan saat login");
             console.error("Login error:", err);
         } finally {
             setLoading(false);
@@ -50,11 +50,6 @@ export default function SignInForm() {
                         </p>
                     </div>
                     <div>
-                        {error && (
-                            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
-                                {error}
-                            </div>
-                        )}
                         <form onSubmit={handleSubmit}>
                             <div className="space-y-6">
                                 <div>

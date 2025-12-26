@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { Toaster } from "react-hot-toast";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -38,6 +39,38 @@ import { PublicRoute } from "./components/auth/PublicRoute";
 export default function App() {
     return (
         <>
+            <Toaster
+                position="top-right"
+                reverseOrder={false}
+                gutter={8}
+                containerStyle={{
+                    top: 80,
+                    right: 20,
+                    zIndex: 99999,
+                }}
+                toastOptions={{
+                    duration: 3000,
+                    style: {
+                        background: "#fff",
+                        color: "#363636",
+                        zIndex: 99999,
+                    },
+                    success: {
+                        duration: 3000,
+                        iconTheme: {
+                            primary: "#10b981",
+                            secondary: "#fff",
+                        },
+                    },
+                    error: {
+                        duration: 4000,
+                        iconTheme: {
+                            primary: "#ef4444",
+                            secondary: "#fff",
+                        },
+                    },
+                }}
+            />
             <Router>
                 <ScrollToTop />
                 <Routes>

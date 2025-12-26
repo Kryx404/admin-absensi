@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
     getAllLokasi,
     createLokasi,
@@ -43,7 +44,6 @@ interface Lokasi {
 const ManajemenLokasi: React.FC = () => {
     const [lokasi, setLokasi] = useState<Lokasi[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
     const [form, setForm] = useState<Partial<Lokasi>>({
         radius: 100,
         is_active: true,
@@ -102,9 +102,8 @@ const ManajemenLokasi: React.FC = () => {
             } else {
                 setLokasi([]);
             }
-            setError("");
         } catch (e: any) {
-            setError(e.message || "Gagal mengambil data lokasi");
+            toast.error(e.message || "Gagal mengambil data lokasi");
             setLokasi([]);
         }
         setLoading(false);
@@ -154,9 +153,11 @@ const ManajemenLokasi: React.FC = () => {
             if (editId) {
                 const result = await updateLokasi(editId.toString(), payload);
                 console.log("Update result:", result);
+                toast.success("Lokasi berhasil diupdate!");
             } else {
                 const result = await createLokasi(payload);
                 console.log("Create result:", result);
+                toast.success("Lokasi berhasil ditambahkan!");
             }
             setForm({ radius: 100, is_active: true });
             setEditId(null);
@@ -164,7 +165,7 @@ const ManajemenLokasi: React.FC = () => {
             fetchLokasi();
         } catch (e: any) {
             console.error("Submit error:", e);
-            setError(e.message || "Gagal simpan lokasi");
+            toast.error(e.message || "Gagal simpan lokasi");
         }
     };
 
@@ -184,16 +185,16 @@ const ManajemenLokasi: React.FC = () => {
         setForm({ radius: 100, is_active: true });
         setEditId(null);
         setShowMap(false);
-        setError("");
     };
 
     const handleDelete = async (id: number) => {
         if (!window.confirm("Yakin hapus lokasi ini?")) return;
         try {
             await deleteLokasi(id.toString());
+            toast.success("Lokasi berhasil dihapus!");
             fetchLokasi();
         } catch (e: any) {
-            setError(e.message || "Gagal hapus lokasi");
+            toast.error(e.message || "Gagal hapus lokasi");
         }
     };
 
@@ -421,11 +422,6 @@ const ManajemenLokasi: React.FC = () => {
                         )}
                     </div>
                 </form>
-                {error && (
-                    <div className="text-red-600 dark:text-red-400 mb-4 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-                        {error}
-                    </div>
-                )}
                 {loading ? (
                     <div className="text-center py-12">
                         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>

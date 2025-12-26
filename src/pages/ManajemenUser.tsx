@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { getAllUsers, createUser, updateUser, deleteUser } from "../api/user";
 
 interface User {
@@ -17,7 +18,6 @@ interface User {
 const ManajemenUser: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
     const [form, setForm] = useState<Partial<User>>({});
     const [editId, setEditId] = useState<string | null>(null);
 
@@ -33,9 +33,8 @@ const ManajemenUser: React.FC = () => {
             } else {
                 setUsers([]);
             }
-            setError("");
         } catch (e: any) {
-            setError(e.message || "Gagal mengambil data user");
+            toast.error(e.message || "Gagal mengambil data user");
             setUsers([]);
         }
         setLoading(false);
@@ -56,14 +55,16 @@ const ManajemenUser: React.FC = () => {
         try {
             if (editId) {
                 await updateUser(editId, form);
+                toast.success("User berhasil diupdate!");
             } else {
                 await createUser(form);
+                toast.success("User berhasil ditambahkan!");
             }
             setForm({});
             setEditId(null);
             fetchUsers();
         } catch (e: any) {
-            setError(e.message || "Gagal simpan user");
+            toast.error(e.message || "Gagal simpan user");
         }
     };
 
@@ -76,8 +77,10 @@ const ManajemenUser: React.FC = () => {
         if (!window.confirm("Yakin hapus user ini?")) return;
         try {
             await deleteUser(id);
+            toast.success("User berhasil dihapus!");
             fetchUsers();
         } catch (e: any) {
+            toast.error(e.message || "Gagal menghapus user");
             setError(e.message || "Gagal hapus user");
         }
     };
@@ -218,11 +221,6 @@ const ManajemenUser: React.FC = () => {
                     )}
                 </div>
             </form>
-            {error && (
-                <div className="text-red-500 mb-2 bg-red-50 p-3 rounded">
-                    {error}
-                </div>
-            )}
             {loading ? (
                 <div className="text-center py-8">Loading...</div>
             ) : (

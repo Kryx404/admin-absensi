@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import {
     getPengaturan,
     updatePengaturan,
@@ -10,8 +11,6 @@ const Settings = () => {
     const [pengaturan, setPengaturan] = useState<PengaturanCabang | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const days = [
         { key: "senin", label: "Senin" },
@@ -30,11 +29,10 @@ const Settings = () => {
     const loadPengaturan = async () => {
         try {
             setLoading(true);
-            setError(null);
             const data = await getPengaturan();
             setPengaturan(data);
         } catch (err) {
-            setError("Gagal memuat pengaturan");
+            toast.error("Gagal memuat pengaturan");
             console.error(err);
         } finally {
             setLoading(false);
@@ -105,8 +103,6 @@ const Settings = () => {
 
         try {
             setSaving(true);
-            setError(null);
-            setSuccessMessage(null);
 
             await updatePengaturan({
                 jam_kerja: pengaturan.jam_kerja,
@@ -116,10 +112,9 @@ const Settings = () => {
                 notif_approval: pengaturan.notif_approval,
             });
 
-            setSuccessMessage("Pengaturan berhasil disimpan!");
-            setTimeout(() => setSuccessMessage(null), 3000);
+            toast.success("Pengaturan berhasil disimpan!");
         } catch (err) {
-            setError("Gagal menyimpan pengaturan");
+            toast.error("Gagal menyimpan pengaturan");
             console.error(err);
         } finally {
             setSaving(false);

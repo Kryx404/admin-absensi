@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import PageMeta from "../components/common/PageMeta";
 import {
     getAllCabang,
@@ -36,7 +37,6 @@ interface Cabang {
 export default function ManajemenCabang() {
     const [cabang, setCabang] = useState<Cabang[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
     const [showForm, setShowForm] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
     const [form, setForm] = useState({
@@ -61,7 +61,7 @@ export default function ManajemenCabang() {
             const response = await getAllCabang();
             setCabang(response.data);
         } catch (err: any) {
-            setError(err.message || "Gagal mengambil data cabang");
+            toast.error(err.message || "Gagal mengambil data cabang");
         } finally {
             setLoading(false);
         }
@@ -69,13 +69,14 @@ export default function ManajemenCabang() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
 
         try {
             if (editId) {
                 await updateCabang(editId.toString(), form);
+                toast.success("Cabang berhasil diupdate!");
             } else {
                 await createCabang(form);
+                toast.success("Cabang berhasil ditambahkan!");
             }
             setShowForm(false);
             setEditId(null);
@@ -92,7 +93,7 @@ export default function ManajemenCabang() {
             });
             fetchCabang();
         } catch (err: any) {
-            setError(err.message || "Gagal menyimpan data cabang");
+            toast.error(err.message || "Gagal menyimpan data cabang");
         }
     };
 
@@ -121,9 +122,10 @@ export default function ManajemenCabang() {
         if (!window.confirm("Yakin hapus cabang ini?")) return;
         try {
             await deleteCabang(id.toString());
+            toast.success("Cabang berhasil dihapus!");
             fetchCabang();
         } catch (err: any) {
-            setError(err.message || "Gagal menghapus cabang");
+            toast.error(err.message || "Gagal menghapus cabang");
         }
     };
 

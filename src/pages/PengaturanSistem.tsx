@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import {
     getPengaturan,
     updatePengaturan,
@@ -10,8 +11,6 @@ const PengaturanSistem = () => {
     const [pengaturan, setPengaturan] = useState<PengaturanCabang | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const days = [
         { key: "senin", label: "Senin" },
@@ -30,11 +29,10 @@ const PengaturanSistem = () => {
     const loadPengaturan = async () => {
         try {
             setLoading(true);
-            setError(null);
             const data = await getPengaturan();
             setPengaturan(data);
         } catch (err) {
-            setError("Gagal memuat pengaturan");
+            toast.error("Gagal memuat pengaturan");
             console.error(err);
         } finally {
             setLoading(false);
@@ -105,8 +103,6 @@ const PengaturanSistem = () => {
 
         try {
             setSaving(true);
-            setError(null);
-            setSuccessMessage(null);
 
             await updatePengaturan({
                 jam_kerja: pengaturan.jam_kerja,
@@ -116,10 +112,9 @@ const PengaturanSistem = () => {
                 notif_approval: pengaturan.notif_approval,
             });
 
-            setSuccessMessage("Pengaturan berhasil disimpan!");
-            setTimeout(() => setSuccessMessage(null), 3000);
+            toast.success("Pengaturan berhasil disimpan!");
         } catch (err) {
-            setError("Gagal menyimpan pengaturan");
+            toast.error("Gagal menyimpan pengaturan");
             console.error(err);
         } finally {
             setSaving(false);
@@ -188,44 +183,6 @@ const PengaturanSistem = () => {
                         </div>
                     )}
                 </div>
-
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg flex items-start">
-                        <svg
-                            className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0"
-                            fill="currentColor"
-                            viewBox="0 0 20 20">
-                            <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                        <div>
-                            <p className="font-medium">Error</p>
-                            <p className="text-sm mt-1">{error}</p>
-                        </div>
-                    </div>
-                )}
-
-                {successMessage && (
-                    <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 rounded-lg flex items-start">
-                        <svg
-                            className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0"
-                            fill="currentColor"
-                            viewBox="0 0 20 20">
-                            <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                        <div>
-                            <p className="font-medium">Berhasil</p>
-                            <p className="text-sm mt-1">{successMessage}</p>
-                        </div>
-                    </div>
-                )}
 
                 {/* Jam Kerja Section */}
                 <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-6 shadow-sm mb-6">
